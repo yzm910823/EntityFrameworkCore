@@ -71,9 +71,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 ? Model.FindEntityType(entityTypeName)
                 : null;
 
-            Debug.Assert(entityType == null || entityType.IsSharedType,
-                nameof(SelfDescribingIndexPropertyEntityFinder) + " found non-shared-type EntityType.");
-            return entityType;
+            return entityType != null && entityType.IsSharedType ? entityType : null;
         }
     }
 }
