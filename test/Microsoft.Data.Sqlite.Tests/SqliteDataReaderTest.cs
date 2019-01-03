@@ -390,7 +390,7 @@ namespace Microsoft.Data.Sqlite
         [InlineData("SELECT 3.14;", "REAL")]
         [InlineData("SELECT 'test';", "TEXT")]
         [InlineData("SELECT X'7E57';", "BLOB")]
-        [InlineData("SELECT NULL;", "INTEGER")]
+        [InlineData("SELECT NULL;", "BLOB")]
         public void GetDataTypeName_works(string sql, string expected)
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
@@ -604,7 +604,7 @@ namespace Microsoft.Data.Sqlite
         [InlineData("SELECT 3.14;", typeof(double))]
         [InlineData("SELECT 'test';", typeof(string))]
         [InlineData("SELECT X'7E57';", typeof(byte[]))]
-        [InlineData("SELECT NULL;", typeof(int))]
+        [InlineData("SELECT NULL;", typeof(byte[]))] // column affinity is BLOB since no type is specified
         public void GetFieldType_works(string sql, Type expected)
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
@@ -612,6 +612,35 @@ namespace Microsoft.Data.Sqlite
                 connection.Open();
 
                 using (var reader = connection.ExecuteReader(sql))
+                {
+                    Assert.Equal(expected, reader.GetFieldType(0));
+                }
+            }
+        }
+        
+        [Theory]
+        [InlineData("TEXT", typeof(string))]
+        [InlineData("CHARACTER(20)", typeof(string))]
+        [InlineData("NVARCHAR(100)", typeof(string))]
+        [InlineData("CLOB", typeof(string))]
+        [InlineData("INTEGER", typeof(long))]
+        [InlineData("BIGINT", typeof(long))]
+        [InlineData("UNSIGNED BIG INT", typeof(long))]
+        [InlineData("REAL", typeof(double))]
+        [InlineData("DOUBLE", typeof(double))]
+        [InlineData("FLOAT", typeof(double))]
+        [InlineData("BLOB", typeof(byte[]))]
+        [InlineData("", typeof(byte[]))]
+        [InlineData("NUMERIC", typeof(string))]
+        [InlineData("DATETIME", typeof(string))]
+        public void GetFieldType_works_on_NULL(string type, Type expected)
+        {
+            using (var connection = new SqliteConnection("Data Source=:memory:"))
+            {
+                connection.Open();
+                connection.ExecuteNonQuery($"CREATE TABLE Test(Value {type});");
+
+                using (var reader = connection.ExecuteReader("SELECT Value FROM Test;"))
                 {
                     Assert.Equal(expected, reader.GetFieldType(0));
                 }
@@ -1281,8 +1310,8 @@ namespace Microsoft.Data.Sqlite
         [InlineData("('Z'), (1), ('A')", typeof(string))]
         [InlineData("(0.1), (0.01), ('A')", typeof(double))]
         [InlineData("(X'7E57'), (X'577E'), ('A')", typeof(byte[]))]
-        [InlineData("(NULL), (NULL), (NULL)", typeof(int))]
-        [InlineData("(NULL), ('A'), ('B')", typeof(string))]
+        [InlineData("(NULL), (NULL), (NULL)", typeof(byte[]))]
+        [InlineData("(NULL), ('A'), ('B')", typeof(byte[]))]
         public void GetSchemaTable_DataType_works(string values, Type expectedType)
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
@@ -1296,6 +1325,37 @@ namespace Microsoft.Data.Sqlite
                     var schema = reader.GetSchemaTable();
                     Assert.True(schema.Columns.Contains("DataType"));
                     Assert.Equal(expectedType, schema.Rows[0]["DataType"]);
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData("TEXT", typeof(string))]
+        [InlineData("CHARACTER(20)", typeof(string))]
+        [InlineData("NVARCHAR(100)", typeof(string))]
+        [InlineData("CLOB", typeof(string))]
+        [InlineData("INTEGER", typeof(long))]
+        [InlineData("BIGINT", typeof(long))]
+        [InlineData("UNSIGNED BIG INT", typeof(long))]
+        [InlineData("REAL", typeof(double))]
+        [InlineData("DOUBLE", typeof(double))]
+        [InlineData("FLOAT", typeof(double))]
+        [InlineData("BLOB", typeof(byte[]))]
+        [InlineData("", typeof(byte[]))]
+        [InlineData("NUMERIC", typeof(string))]
+        [InlineData("DATETIME", typeof(string))]
+        public void GetSchemaTable_DataType_works_on_empty_table(string type, Type expected)
+        {
+            using (var connection = new SqliteConnection("Data Source=:memory:"))
+            {
+                connection.Open();
+                connection.ExecuteNonQuery($"CREATE TABLE Test(Value {type});");
+
+                using (var reader = connection.ExecuteReader("SELECT Value FROM Test;"))
+                {
+                    var schema = reader.GetSchemaTable();
+                    Assert.True(schema.Columns.Contains("DataType"));
+                    Assert.Equal(expected, schema.Rows[0]["DataType"]);
                 }
             }
         }

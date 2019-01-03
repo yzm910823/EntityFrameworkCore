@@ -532,7 +532,8 @@ namespace Microsoft.Data.Sqlite
                 var tableName = raw.sqlite3_column_table_name(_stmt, i);
                 schemaRow[BaseTableName] = tableName;
                 schemaRow[DataType] = GetFieldType(i);
-                schemaRow[DataTypeName] = GetDataTypeName(i);
+                var dataTypeName = GetDataTypeName(i);
+                schemaRow[DataTypeName] = dataTypeName;
                 schemaRow[IsAliased] = columnName != GetName(i);
                 schemaRow[IsExpression] = columnName == null;
                 schemaRow[IsLong] = DBNull.Value;
@@ -553,18 +554,8 @@ namespace Microsoft.Data.Sqlite
                         var cnt = (long)command.ExecuteScalar();
                         schemaRow[IsUnique] = cnt != 0;
 
-                        command.Parameters.Clear();
-                        var columnType = "typeof(\"" + columnName.Replace("\"", "\"\"") + "\")";
-                        command.CommandText = new StringBuilder()
-                            .AppendLine($"SELECT {columnType}")
-                            .AppendLine($"FROM \"{tableName}\"")
-                            .AppendLine($"WHERE {columnType} != 'null'")
-                            .AppendLine($"GROUP BY {columnType}")
-                            .AppendLine("ORDER BY count() DESC")
-                            .AppendLine("LIMIT 1;").ToString();
-
-                        var type = (string)command.ExecuteScalar();
-                        schemaRow[DataType] = SqliteDataRecord.GetFieldType(type);
+                        schemaRow[DataType] = SqliteDataRecord.GetFieldTypeFromSqliteType(
+                            SqliteDataRecord.Sqlite3AffinityType(dataTypeName));
                     }
 
                     if (!string.IsNullOrEmpty(databaseName))
