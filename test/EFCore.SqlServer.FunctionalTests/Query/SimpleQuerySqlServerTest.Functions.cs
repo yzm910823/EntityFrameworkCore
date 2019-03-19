@@ -128,7 +128,9 @@ WHERE (CHARINDEX([c].[ContactName], [c].[ContactName]) > 0) OR ([c].[ContactName
             await AssertQuery<Customer>(
                 isAsync,
                 cs => cs.Where(c => c.ContactName.Contains(LocalMethod1())), // case-insensitive
-                cs => cs.Where(c => c.ContactName.Contains(LocalMethod1().ToLower()) || c.ContactName.Contains(LocalMethod1().ToUpper())), // case-sensitive
+                cs => cs.Where(
+                    c => c.ContactName.Contains(LocalMethod1().ToLower())
+                         || c.ContactName.Contains(LocalMethod1().ToUpper())), // case-sensitive
                 entryCount: 34);
 
             AssertSql(
@@ -457,6 +459,90 @@ WHERE [c].[CustomerID] >= N'ALFKI' AND [c].[CustomerID] < N'CACTU'",
                 @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
 WHERE [c].[ContactTitle] = N'Owner' AND [c].[Country] <> N'USA'");
+        }
+
+        public override async Task DateTime_Compare_to_simple_zero(bool isAsync, bool compareTo)
+        {
+            await base.DateTime_Compare_to_simple_zero(isAsync, compareTo);
+
+            AssertSql(
+                @"@__myDatetime_0='1998-05-04T00:00:00'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderDate] = @__myDatetime_0",
+                //
+                @"@__myDatetime_0='1998-05-04T00:00:00'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderDate] <> @__myDatetime_0",
+                //
+                @"@__myDatetime_0='1998-05-04T00:00:00'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderDate] > @__myDatetime_0",
+                //
+                @"@__myDatetime_0='1998-05-04T00:00:00'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderDate] <= @__myDatetime_0",
+                //
+                @"@__myDatetime_0='1998-05-04T00:00:00'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderDate] > @__myDatetime_0",
+                //
+                @"@__myDatetime_0='1998-05-04T00:00:00'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderDate] <= @__myDatetime_0");
+        }
+
+        public override async Task Int_Compare_to_simple_zero(bool isAsync)
+        {
+            await base.Int_Compare_to_simple_zero(isAsync);
+
+            AssertSql(
+                @"@__orderId_0='10250'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderID] = @__orderId_0",
+                //
+                @"@__orderId_0='10250'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderID] <> @__orderId_0",
+                //
+                @"@__orderId_0='10250'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderID] > @__orderId_0",
+                //
+                @"@__orderId_0='10250'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderID] <= @__orderId_0",
+                //
+                @"@__orderId_0='10250'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderID] > @__orderId_0",
+                //
+                @"@__orderId_0='10250'
+
+SELECT [c].[OrderID], [c].[CustomerID], [c].[EmployeeID], [c].[OrderDate]
+FROM [Orders] AS [c]
+WHERE [c].[OrderID] <= @__orderId_0");
         }
 
         public override async Task Where_math_abs1(bool isAsync)
@@ -1042,7 +1128,11 @@ WHERE ([o].[CustomerID] = N'ALFKI') AND (CONVERT(nvarchar(max), CONVERT(bigint, 
                 //
                 @"SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
-WHERE ([o].[CustomerID] = N'ALFKI') AND (CONVERT(nvarchar(max), CONVERT(nvarchar(max), [o].[OrderID] % 1)) <> N'10')");
+WHERE ([o].[CustomerID] = N'ALFKI') AND (CONVERT(nvarchar(max), CONVERT(nvarchar(max), [o].[OrderID] % 1)) <> N'10')",
+                //
+                @"SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
+FROM [Orders] AS [o]
+WHERE ([o].[CustomerID] = N'ALFKI') AND ((CHARINDEX(N'1997', CONVERT(nvarchar(max), [o].[OrderDate])) > 0) OR (CHARINDEX(N'1998', CONVERT(nvarchar(max), [o].[OrderDate])) > 0))");
         }
 
         public override async Task Indexof_with_emptystring(bool isAsync)
@@ -1137,7 +1227,7 @@ WHERE [c].[Region] IS NULL OR ([c].[Region] = N'')");
             AssertSql(
                 @"SELECT [c].[CustomerID] AS [Id], CASE
     WHEN [c].[Region] IS NULL OR ([c].[Region] = N'')
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END AS [Value]
 FROM [Customers] AS [c]");
         }
@@ -1149,7 +1239,7 @@ FROM [Customers] AS [c]");
             AssertSql(
                 @"SELECT [c].[CustomerID] AS [Id], CASE
     WHEN [c].[Region] IS NOT NULL AND ([c].[Region] <> N'')
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END AS [Value]
 FROM [Customers] AS [c]");
         }

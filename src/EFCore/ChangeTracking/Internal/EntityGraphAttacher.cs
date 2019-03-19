@@ -5,20 +5,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class EntityGraphAttacher : IEntityGraphAttacher
     {
         private readonly IEntityEntryGraphIterator _graphIterator;
-
-        // Stored for perf
-        private static readonly object[] _boxedEntityStates =
-            { EntityState.Detached, EntityState.Unchanged, EntityState.Deleted, EntityState.Modified, EntityState.Added };
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -31,13 +36,17 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual void AttachGraph(InternalEntityEntry rootEntry, EntityState entityState, bool forceStateWhenUnknownKey)
+        public virtual void AttachGraph(
+            InternalEntityEntry rootEntry,
+            EntityState targetState,
+            EntityState storeGeneratedWithKeySetTargetState,
+            bool forceStateWhenUnknownKey)
             => _graphIterator.TraverseGraph(
-                new EntityEntryGraphNode(rootEntry, null, null)
-                {
-                    NodeState = _boxedEntityStates[(int)entityState]
-                },
-                forceStateWhenUnknownKey,
+                new EntityEntryGraphNode<(EntityState TargetState, EntityState StoreGenTargetState, bool Force)>(
+                    rootEntry,
+                    (targetState, storeGeneratedWithKeySetTargetState, forceStateWhenUnknownKey),
+                    null,
+                    null),
                 PaintAction);
 
         /// <summary>
@@ -46,19 +55,21 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         public virtual Task AttachGraphAsync(
             InternalEntityEntry rootEntry,
-            EntityState entityState,
+            EntityState targetState,
+            EntityState storeGeneratedWithKeySetTargetState,
             bool forceStateWhenUnknownKey,
             CancellationToken cancellationToken = default)
             => _graphIterator.TraverseGraphAsync(
-                new EntityEntryGraphNode(rootEntry, null, null)
-                {
-                    NodeState = _boxedEntityStates[(int)entityState]
-                },
-                forceStateWhenUnknownKey,
+                new EntityEntryGraphNode<(EntityState TargetState, EntityState StoreGenTargetState, bool Force)>(
+                    rootEntry,
+                    (targetState, storeGeneratedWithKeySetTargetState, forceStateWhenUnknownKey),
+                    null,
+                    null),
                 PaintActionAsync,
                 cancellationToken);
 
-        private static bool PaintAction(EntityEntryGraphNode node, bool force)
+        private static bool PaintAction(
+            EntityEntryGraphNode<(EntityState TargetState, EntityState StoreGenTargetState, bool Force)> node)
         {
             var internalEntityEntry = node.GetInfrastructure();
             if (internalEntityEntry.EntityState != EntityState.Detached)
@@ -66,19 +77,23 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 return false;
             }
 
-            var entityState = (EntityState)node.NodeState;
+            var nodeState = node.NodeState;
+
+            var keyValueState = internalEntityEntry.IsKeySet;
 
             internalEntityEntry.SetEntityState(
-                internalEntityEntry.IsKeySet
-                    ? entityState
-                    : EntityState.Added,
+                keyValueState.IsSet
+                    ? (keyValueState.IsGenerated ? nodeState.StoreGenTargetState : nodeState.TargetState)
+                    : EntityState.Added, // Key can only be not-set if it is store-generated
                 acceptChanges: true,
-                forceStateWhenUnknownKey: force ? (EntityState?)entityState : null);
+                forceStateWhenUnknownKey: nodeState.Force ? (EntityState?)nodeState.TargetState : null);
 
             return true;
         }
 
-        private static async Task<bool> PaintActionAsync(EntityEntryGraphNode node, bool force, CancellationToken cancellationToken)
+        private static async Task<bool> PaintActionAsync(
+            EntityEntryGraphNode<(EntityState TargetState, EntityState StoreGenTargetState, bool Force)> node,
+            CancellationToken cancellationToken)
         {
             var internalEntityEntry = node.GetInfrastructure();
             if (internalEntityEntry.EntityState != EntityState.Detached)
@@ -86,14 +101,16 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 return false;
             }
 
-            var entityState = (EntityState)node.NodeState;
+            var nodeState = node.NodeState;
+
+            var keyValueState = internalEntityEntry.IsKeySet;
 
             await internalEntityEntry.SetEntityStateAsync(
-                internalEntityEntry.IsKeySet
-                    ? entityState
-                    : EntityState.Added,
+                keyValueState.IsSet
+                    ? (keyValueState.IsGenerated ? nodeState.StoreGenTargetState : nodeState.TargetState)
+                    : EntityState.Added, // Key can only be not-set if it is store-generated
                 acceptChanges: true,
-                forceStateWhenUnknownKey: force ? (EntityState?)entityState : null,
+                forceStateWhenUnknownKey: nodeState.Force ? (EntityState?)nodeState.TargetState : null,
                 cancellationToken: cancellationToken);
 
             return true;

@@ -265,13 +265,13 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                             {
                                 _querySource,
                                 QueryModelVisitor.QueryCompilationContext.IsTrackingQuery
-                                && !entityType.IsQueryType,
+                                    && entityType.FindPrimaryKey() != null,
                                 entityType.FindPrimaryKey(),
                                 materializer,
                                 materializerExpression,
                                 typeIndexMap,
                                 QueryModelVisitor.QueryCompilationContext.IsQueryBufferRequired
-                                && !entityType.IsQueryType
+                                    && entityType.FindPrimaryKey() != null
                             });
             }
             else
@@ -385,7 +385,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
         {
             Expression discriminatorPredicate;
 
-            if (entityType.IsQueryType)
+            if (entityType.FindPrimaryKey() == null)
             {
                 discriminatorPredicate = GenerateDiscriminatorExpression(entityType, selectExpression, querySource);
             }
@@ -393,9 +393,8 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
             {
                 var sharedTypes = new HashSet<IEntityType>(
                     _model.GetEntityTypes()
-                        .Where(e => !e.IsQueryType)
-                        .Where(
-                            et => et.Relational().TableName == entityType.Relational().TableName
+                        .Where(et => et.FindPrimaryKey() != null
+                                  && et.Relational().TableName == entityType.Relational().TableName
                                   && et.Relational().Schema == entityType.Relational().Schema));
 
                 var currentPath = new Stack<IEntityType>();

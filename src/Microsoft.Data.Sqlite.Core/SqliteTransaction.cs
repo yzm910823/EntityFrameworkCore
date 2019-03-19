@@ -5,7 +5,8 @@ using System;
 using System.Data;
 using System.Data.Common;
 using Microsoft.Data.Sqlite.Properties;
-using SQLitePCL;
+
+using static SQLitePCL.raw;
 
 namespace Microsoft.Data.Sqlite
 {
@@ -22,7 +23,7 @@ namespace Microsoft.Data.Sqlite
         internal SqliteTransaction(SqliteConnection connection, IsolationLevel isolationLevel)
         {
             if ((isolationLevel == IsolationLevel.ReadUncommitted
-                 && connection.ConnectionStringBuilder.Cache != SqliteCacheMode.Shared)
+                 && connection.ConnectionOptions.Cache != SqliteCacheMode.Shared)
                 || isolationLevel == IsolationLevel.ReadCommitted
                 || isolationLevel == IsolationLevel.RepeatableRead)
             {
@@ -49,7 +50,7 @@ namespace Microsoft.Data.Sqlite
                 IsolationLevel == IsolationLevel.Serializable
                     ? "BEGIN IMMEDIATE;"
                     : "BEGIN;");
-            raw.sqlite3_rollback_hook(connection.Handle, RollbackExternal, null);
+            sqlite3_rollback_hook(connection.Handle, RollbackExternal, null);
         }
 
         /// <summary>
@@ -79,7 +80,7 @@ namespace Microsoft.Data.Sqlite
                 ? throw new InvalidOperationException(Resources.TransactionCompleted)
                 : _isolationLevel != IsolationLevel.Unspecified
                     ? _isolationLevel
-                    : (_connection.ConnectionStringBuilder.Cache == SqliteCacheMode.Shared
+                    : (_connection.ConnectionOptions.Cache == SqliteCacheMode.Shared
                        && _connection.ExecuteScalar<long>("PRAGMA read_uncommitted;") != 0)
                         ? IsolationLevel.ReadUncommitted
                         : IsolationLevel.Serializable;
@@ -89,12 +90,14 @@ namespace Microsoft.Data.Sqlite
         /// </summary>
         public override void Commit()
         {
-            if (_externalRollback || _completed || _connection.State != ConnectionState.Open)
+            if (ExternalRollback
+                || _completed
+                || _connection.State != ConnectionState.Open)
             {
                 throw new InvalidOperationException(Resources.TransactionCompleted);
             }
 
-            raw.sqlite3_rollback_hook(_connection.Handle, null, null);
+            sqlite3_rollback_hook(_connection.Handle, null, null);
             _connection.ExecuteNonQuery("COMMIT;");
             Complete();
         }
@@ -137,9 +140,9 @@ namespace Microsoft.Data.Sqlite
 
         private void RollbackInternal()
         {
-            if (!_externalRollback)
+            if (!ExternalRollback)
             {
-                raw.sqlite3_rollback_hook(_connection.Handle, null, null);
+                sqlite3_rollback_hook(_connection.Handle, null, null);
                 _connection.ExecuteNonQuery("ROLLBACK;");
             }
 
@@ -148,7 +151,7 @@ namespace Microsoft.Data.Sqlite
 
         private void RollbackExternal(object userData)
         {
-            raw.sqlite3_rollback_hook(_connection.Handle, null, null);
+            sqlite3_rollback_hook(_connection.Handle, null, null);
             _externalRollback = true;
         }
     }

@@ -20,6 +20,8 @@ using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
 using Microsoft.Extensions.DependencyInjection;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore
 {
     /// <summary>
@@ -50,20 +52,18 @@ namespace Microsoft.EntityFrameworkCore
         IInfrastructure<IServiceProvider>,
         IDbContextDependencies,
         IDbSetCache,
-        IDbQueryCache,
         IDbContextPoolable
     {
-        private IDictionary<Type, object> _sets;
-        private IDictionary<Type, object> _queries;
+        private IDictionary<Type, object>? _sets;
         private readonly DbContextOptions _options;
 
-        private IDbContextServices _contextServices;
-        private IDbContextDependencies _dbContextDependencies;
-        private DatabaseFacade _database;
-        private ChangeTracker _changeTracker;
+        private IDbContextServices? _contextServices;
+        private IDbContextDependencies? _dbContextDependencies;
+        private DatabaseFacade? _database;
+        private ChangeTracker? _changeTracker;
 
-        private IServiceScope _serviceScope;
-        private IDbContextPool _dbContextPool;
+        private IServiceScope? _serviceScope;
+        private IDbContextPool? _dbContextPool;
         private bool _initializing;
         private bool _disposed;
 
@@ -149,12 +149,6 @@ namespace Microsoft.EntityFrameworkCore
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        IDbQuerySource IDbContextDependencies.QuerySource => DbContextDependencies.QuerySource;
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         IEntityFinderFactory IDbContextDependencies.EntityFinderFactory => DbContextDependencies.EntityFinderFactory;
 
         /// <summary>
@@ -216,28 +210,6 @@ namespace Microsoft.EntityFrameworkCore
         }
 
         /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        object IDbQueryCache.GetOrAddQuery(IDbQuerySource source, Type type)
-        {
-            CheckDisposed();
-
-            if (_queries == null)
-            {
-                _queries = new Dictionary<Type, object>();
-            }
-
-            if (!_queries.TryGetValue(type, out var query))
-            {
-                query = source.CreateQuery(this, type);
-                _queries[type] = query;
-            }
-
-            return query;
-        }
-
-        /// <summary>
         ///     Creates a <see cref="DbSet{TEntity}" /> that can be used to query and save instances of <typeparamref name="TEntity" />.
         /// </summary>
         /// <typeparam name="TEntity"> The type of entity for which a set should be returned. </typeparam>
@@ -247,13 +219,14 @@ namespace Microsoft.EntityFrameworkCore
             => (DbSet<TEntity>)((IDbSetCache)this).GetOrAddSet(DbContextDependencies.SetSource, typeof(TEntity));
 
         /// <summary>
-        ///     Creates a <see cref="DbQuery{TQuery}" /> that can be used to query instances of <typeparamref name="TQuery" />.
+        ///     Creates a <see cref="DbSet{TQuery}" /> that can be used to query instances of <typeparamref name="TQuery" />.
         /// </summary>
         /// <typeparam name="TQuery"> The type of query for which a DbQuery should be returned. </typeparam>
-        /// <returns> A DbQuery for the given query type. </returns>
+        /// <returns> A DbQuery for the given keyless entity type. </returns>
+        [Obsolete("Use Set() for entity types without keys")]
         public virtual DbQuery<TQuery> Query<TQuery>()
             where TQuery : class
-            => (DbQuery<TQuery>)((IDbQueryCache)this).GetOrAddQuery(DbContextDependencies.QuerySource, typeof(TQuery));
+            => (DbQuery<TQuery>)Set<TQuery>();
 
         private IEntityFinder Finder(Type type)
         {
@@ -268,9 +241,9 @@ namespace Microsoft.EntityFrameworkCore
                 throw new InvalidOperationException(CoreStrings.InvalidSetType(type.ShortDisplayName()));
             }
 
-            if (entityType.IsQueryType)
+            if (entityType.FindPrimaryKey() == null)
             {
-                throw new InvalidOperationException(CoreStrings.InvalidSetTypeQuery(type.ShortDisplayName()));
+                throw new InvalidOperationException(CoreStrings.InvalidSetKeylessOperation(type.ShortDisplayName()));
             }
 
             return DbContextDependencies.EntityFinderFactory.Create(entityType);
@@ -472,6 +445,14 @@ namespace Microsoft.EntityFrameworkCore
             }
         }
 
+        private void TryDetectChanges(EntityEntry entry)
+        {
+            if (ChangeTracker.AutoDetectChangesEnabled)
+            {
+                 entry.DetectChanges();
+            }
+        }
+
         /// <summary>
         ///     Asynchronously saves all changes made in this context to the database.
         /// </summary>
@@ -575,7 +556,9 @@ namespace Microsoft.EntityFrameworkCore
                 _changeTracker?.AutoDetectChangesEnabled,
                 _changeTracker?.QueryTrackingBehavior,
                 _database?.AutoTransactionsEnabled,
-                _changeTracker?.LazyLoadingEnabled);
+                _changeTracker?.LazyLoadingEnabled,
+                _changeTracker?.CascadeDeleteTiming,
+                _changeTracker?.DeleteOrphansTiming);
 
         void IDbContextPoolable.Resurrect(DbContextPoolConfigurationSnapshot configurationSnapshot)
         {
@@ -585,14 +568,18 @@ namespace Microsoft.EntityFrameworkCore
             {
                 Debug.Assert(configurationSnapshot.QueryTrackingBehavior.HasValue);
                 Debug.Assert(configurationSnapshot.LazyLoadingEnabled.HasValue);
+                Debug.Assert(configurationSnapshot.CascadeDeleteTiming.HasValue);
+                Debug.Assert(configurationSnapshot.DeleteOrphansTiming.HasValue);
 
                 ChangeTracker.AutoDetectChangesEnabled = configurationSnapshot.AutoDetectChangesEnabled.Value;
                 ChangeTracker.QueryTrackingBehavior = configurationSnapshot.QueryTrackingBehavior.Value;
                 ChangeTracker.LazyLoadingEnabled = configurationSnapshot.LazyLoadingEnabled.Value;
+                ChangeTracker.CascadeDeleteTiming = configurationSnapshot.CascadeDeleteTiming.Value;
+                ChangeTracker.DeleteOrphansTiming = configurationSnapshot.DeleteOrphansTiming.Value;
             }
             else
             {
-                ((IResettableService)_changeTracker)?.ResetState();
+                ((IResettableService?)_changeTracker)?.ResetState();
             }
 
             if (_database != null)
@@ -622,17 +609,6 @@ namespace Microsoft.EntityFrameworkCore
                 foreach (var set in _sets.Values)
                 {
                     if (set is IResettableService resettable)
-                    {
-                        resettable.ResetState();
-                    }
-                }
-            }
-
-            if (_queries != null)
-            {
-                foreach (var query in _queries.Values)
-                {
-                    if (query is IResettableService resettable)
                     {
                         resettable.ResetState();
                     }
@@ -676,9 +652,11 @@ namespace Microsoft.EntityFrameworkCore
             Check.NotNull(entity, nameof(entity));
             CheckDisposed();
 
-            TryDetectChanges();
+            var entry = EntryWithoutDetectChanges(entity);
 
-            return EntryWithoutDetectChanges(entity);
+            TryDetectChanges(entry);
+
+            return entry;
         }
 
         private EntityEntry<TEntity> EntryWithoutDetectChanges<TEntity>(TEntity entity)
@@ -703,9 +681,11 @@ namespace Microsoft.EntityFrameworkCore
             Check.NotNull(entity, nameof(entity));
             CheckDisposed();
 
-            TryDetectChanges();
+            var entry = EntryWithoutDetectChanges(entity);
 
-            return EntryWithoutDetectChanges(entity);
+            TryDetectChanges(entry);
+
+            return entry;
         }
 
         private EntityEntry EntryWithoutDetectChanges(object entity)
@@ -715,7 +695,11 @@ namespace Microsoft.EntityFrameworkCore
         {
             if (entry.EntityState == EntityState.Detached)
             {
-                DbContextDependencies.EntityGraphAttacher.AttachGraph(entry, entityState, forceStateWhenUnknownKey: true);
+                DbContextDependencies.EntityGraphAttacher.AttachGraph(
+                    entry,
+                    entityState,
+                    entityState,
+                    forceStateWhenUnknownKey: true);
             }
             else
             {
@@ -726,27 +710,23 @@ namespace Microsoft.EntityFrameworkCore
             }
         }
 
-        private async Task SetEntityStateAsync(
+        private Task SetEntityStateAsync(
             InternalEntityEntry entry,
             EntityState entityState,
             CancellationToken cancellationToken)
         {
-            if (entry.EntityState == EntityState.Detached)
-            {
-                await DbContextDependencies.EntityGraphAttacher.AttachGraphAsync(
+            return entry.EntityState == EntityState.Detached
+                ? DbContextDependencies.EntityGraphAttacher.AttachGraphAsync(
                     entry,
                     entityState,
+                    entityState,
                     forceStateWhenUnknownKey: true,
-                    cancellationToken: cancellationToken);
-            }
-            else
-            {
-                await entry.SetEntityStateAsync(
+                    cancellationToken: cancellationToken)
+                : entry.SetEntityStateAsync(
                     entityState,
                     acceptChanges: true,
                     forceStateWhenUnknownKey: entityState,
                     cancellationToken: cancellationToken);
-            }
         }
 
         /// <summary>
@@ -1389,7 +1369,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="entityType"> The type of entity to find. </param>
         /// <param name="keyValues">The values of the primary key for the entity to be found.</param>
         /// <returns>The entity found, or null.</returns>
-        public virtual object Find([NotNull] Type entityType, [CanBeNull] params object[] keyValues)
+        public virtual object? Find([NotNull] Type entityType, [CanBeNull] params object[]? keyValues)
         {
             CheckDisposed();
 
@@ -1406,7 +1386,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="entityType"> The type of entity to find. </param>
         /// <param name="keyValues">The values of the primary key for the entity to be found.</param>
         /// <returns>The entity found, or null.</returns>
-        public virtual Task<object> FindAsync([NotNull] Type entityType, [CanBeNull] params object[] keyValues)
+        public virtual Task<object?> FindAsync([NotNull] Type entityType, [CanBeNull] params object[]? keyValues)
         {
             CheckDisposed();
 
@@ -1424,7 +1404,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="keyValues">The values of the primary key for the entity to be found.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> to observe while waiting for the task to complete.</param>
         /// <returns>The entity found, or null.</returns>
-        public virtual Task<object> FindAsync([NotNull] Type entityType, [CanBeNull] object[] keyValues, CancellationToken cancellationToken)
+        public virtual Task<object?> FindAsync([NotNull] Type entityType, [CanBeNull] object[]? keyValues, CancellationToken cancellationToken)
         {
             CheckDisposed();
 
@@ -1441,7 +1421,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <typeparam name="TEntity"> The type of entity to find. </typeparam>
         /// <param name="keyValues">The values of the primary key for the entity to be found.</param>
         /// <returns>The entity found, or null.</returns>
-        public virtual TEntity Find<TEntity>([CanBeNull] params object[] keyValues)
+        public virtual TEntity? Find<TEntity>([CanBeNull] params object[]? keyValues)
             where TEntity : class
         {
             CheckDisposed();
@@ -1459,7 +1439,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <typeparam name="TEntity"> The type of entity to find. </typeparam>
         /// <param name="keyValues">The values of the primary key for the entity to be found.</param>
         /// <returns>The entity found, or null.</returns>
-        public virtual Task<TEntity> FindAsync<TEntity>([CanBeNull] params object[] keyValues)
+        public virtual Task<TEntity?> FindAsync<TEntity>([CanBeNull] params object[]? keyValues)
             where TEntity : class
         {
             CheckDisposed();
@@ -1478,7 +1458,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="keyValues">The values of the primary key for the entity to be found.</param>
         /// <param name="cancellationToken">A <see cref="CancellationToken" /> to observe while waiting for the task to complete.</param>
         /// <returns>The entity found, or null.</returns>
-        public virtual Task<TEntity> FindAsync<TEntity>([CanBeNull] object[] keyValues, CancellationToken cancellationToken)
+        public virtual Task<TEntity?> FindAsync<TEntity>([CanBeNull] object[]? keyValues, CancellationToken cancellationToken)
             where TEntity : class
         {
             CheckDisposed();

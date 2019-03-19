@@ -4,9 +4,10 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
@@ -49,7 +50,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             public DbSet<DerivedWithoutPrivates> Entities { get; set; }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(nameof(WithPrivatesContext));
+                => optionsBuilder
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(nameof(WithPrivatesContext));
         }
 
         [Fact]
@@ -150,7 +153,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             Assert.Same(
                 entityBuilder, new PropertyDiscoveryConvention(
-                    TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>()).Apply(entityBuilder));
+                    TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>(),
+                    new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(entityBuilder));
 
             Assert.Empty(entityBuilder.Metadata.GetProperties());
         }
@@ -210,7 +214,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             Assert.Same(
                 entityBuilder, new PropertyDiscoveryConvention(
-                        TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>())
+                        TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>(),
+                        new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>())
                     .Apply(entityBuilder));
 
             Assert.Equal(
@@ -232,7 +237,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             Assert.Same(
                 entityBuilder, new PropertyDiscoveryConvention(
-                        TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>())
+                        TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>(),
+                        new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>())
                     .Apply(entityBuilder));
 
             Assert.Empty(entityBuilder.Metadata.GetProperties());

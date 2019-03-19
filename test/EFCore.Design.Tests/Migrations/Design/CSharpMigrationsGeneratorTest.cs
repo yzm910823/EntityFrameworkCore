@@ -80,11 +80,15 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
                 },
                 {
                     RelationalAnnotationNames.Schema,
-                    ("MySchema", _nl + "modelBuilder." + nameof(RelationalEntityTypeBuilderExtensions.ToTable) + @"(""WithAnnotations"",""MySchema"");" + _nl)
+                    ("MySchema",
+                        _nl + "modelBuilder." + nameof(RelationalEntityTypeBuilderExtensions.ToTable)
+                        + @"(""WithAnnotations"",""MySchema"");" + _nl)
                 },
                 {
                     RelationalAnnotationNames.DiscriminatorProperty,
-                    ("Id", _toTable + _nl + "modelBuilder." + nameof(RelationalEntityTypeBuilderExtensions.HasDiscriminator) + @"<int>(""Id"");" + _nl)
+                    ("Id",
+                        _toTable + _nl + "modelBuilder." + nameof(RelationalEntityTypeBuilderExtensions.HasDiscriminator)
+                        + @"<int>(""Id"");" + _nl)
                 },
                 {
                     RelationalAnnotationNames.DiscriminatorValue,
@@ -188,9 +192,10 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
             string generationDefault,
             Action<TestCSharpSnapshotGenerator, IMutableAnnotatable, IndentedStringBuilder> test)
         {
-            var codeHelper = new CSharpHelper(new SqlServerTypeMappingSource(
-                TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
-                TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()));
+            var codeHelper = new CSharpHelper(
+                new SqlServerTypeMappingSource(
+                    TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
+                    TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()));
 
             var generator = new TestCSharpSnapshotGenerator(
                 new CSharpSnapshotGeneratorDependencies(codeHelper));
@@ -237,7 +242,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
             {
             }
 
-            public virtual void TestGenerateEntityTypeAnnotations(string builderName, IEntityType entityType, IndentedStringBuilder stringBuilder)
+            public virtual void TestGenerateEntityTypeAnnotations(
+                string builderName, IEntityType entityType, IndentedStringBuilder stringBuilder)
                 => GenerateEntityTypeAnnotations(builderName, entityType, stringBuilder);
 
             public virtual void TestGeneratePropertyAnnotations(IProperty property, IndentedStringBuilder stringBuilder)
@@ -257,9 +263,10 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
         [Fact]
         public void Snapshot_with_enum_discriminator_uses_converted_values()
         {
-            var codeHelper = new CSharpHelper(new SqlServerTypeMappingSource(
-                TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
-                TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()));
+            var codeHelper = new CSharpHelper(
+                new SqlServerTypeMappingSource(
+                    TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
+                    TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()));
 
             var generator = new CSharpMigrationsGenerator(
                 new MigrationsCodeGeneratorDependencies(),
@@ -301,7 +308,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
         public void Value_converters_with_mapping_hints_are_scaffolded_correctly()
         {
             var commonPrefix
-                = _nl + "." + nameof(PropertyBuilder.HasConversion) + "(new " + nameof(ValueConverter) + "<long, long>(v => default(long), v => default(long)";
+                = _nl + "." + nameof(PropertyBuilder.HasConversion) + "(new " + nameof(ValueConverter)
+                  + "<long, long>(v => default(long), v => default(long)";
 
             AssertConverter(
                 new ValueConverter<int, long>(v => v, v => (int)v), "");
@@ -327,7 +335,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
                 commonPrefix + ", new ConverterMappingHints(fixedLength: false)))");
 
             AssertConverter(
-                new ValueConverter<int, long>(v => v, v => (int)v, new RelationalConverterMappingHints(fixedLength: false, size: 77, scale: -1)),
+                new ValueConverter<int, long>(
+                    v => v, v => (int)v, new RelationalConverterMappingHints(fixedLength: false, size: 77, scale: -1)),
                 commonPrefix + ", new ConverterMappingHints(size: 77, scale: -1, fixedLength: false)))");
         }
 
@@ -336,17 +345,17 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
             var modelBuilder = RelationalTestHelpers.Instance.CreateConventionBuilder();
             var property = modelBuilder.Entity<WithAnnotations>().Property(e => e.Id).Metadata;
             property.SetMaxLength(1000);
+            property.SetValueConverter(valueConverter);
 
             modelBuilder.FinalizeModel();
 
-            var codeHelper = new CSharpHelper(new SqlServerTypeMappingSource(
-                TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
-                TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()));
+            var codeHelper = new CSharpHelper(
+                new SqlServerTypeMappingSource(
+                    TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
+                    TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>()));
 
             var generator = new TestCSharpSnapshotGenerator(
                 new CSharpSnapshotGeneratorDependencies(codeHelper));
-
-            property.SetValueConverter(valueConverter);
 
             var sb = new IndentedStringBuilder();
 
@@ -536,10 +545,16 @@ namespace MyNamespace
 
             var entityType = model.AddEntityType("Cheese");
             var property1 = entityType.AddProperty("Pickle", typeof(StringBuilder));
-            property1.SetValueConverter(new ValueConverter<StringBuilder, string>(v => v.ToString(), v => new StringBuilder(v), new ConverterMappingHints(size: 10)));
+            property1.SetValueConverter(
+                new ValueConverter<StringBuilder, string>(
+                    v => v.ToString(), v => new StringBuilder(v), new ConverterMappingHints(size: 10)));
 
             var property2 = entityType.AddProperty("Ham", typeof(RawEnum));
-            property2.SetValueConverter(new ValueConverter<RawEnum, string>(v => v.ToString(), v => (RawEnum)Enum.Parse(typeof(RawEnum), v), new ConverterMappingHints(size: 10)));
+            property2.SetValueConverter(
+                new ValueConverter<RawEnum, string>(
+                    v => v.ToString(), v => (RawEnum)Enum.Parse(typeof(RawEnum), v), new ConverterMappingHints(size: 10)));
+
+            entityType.SetPrimaryKey(property2);
 
             modelBuilder.FinalizeModel();
 
@@ -571,11 +586,12 @@ namespace MyNamespace
             modelBuilder.Entity(""Cheese"", b =>
                 {
                     b.Property<string>(""Ham"")
-                        .IsRequired()
                         .HasConversion(new ValueConverter<string, string>(v => default(string), v => default(string), new ConverterMappingHints(size: 10)));
 
                     b.Property<string>(""Pickle"")
                         .HasConversion(new ValueConverter<string, string>(v => default(string), v => default(string), new ConverterMappingHints(size: 10)));
+
+                    b.HasKey(""Ham"");
 
                     b.ToTable(""Cheese"");
                 });
@@ -650,6 +666,8 @@ namespace MyNamespace
                     eb.Property(e => e.NullableUInt16).HasDefaultValue(ushort.MaxValue);
                     eb.Property(e => e.NullableUInt32).HasDefaultValue(uint.MaxValue);
                     eb.Property(e => e.NullableUInt64).HasDefaultValue(ulong.MaxValue);
+
+                    eb.HasKey(e => e.Boolean);
                 });
 
             var modelSnapshotCode = generator.GenerateSnapshot(

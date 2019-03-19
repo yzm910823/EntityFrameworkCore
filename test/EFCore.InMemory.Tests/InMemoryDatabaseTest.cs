@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.InMemory.Internal;
 using Microsoft.EntityFrameworkCore.InMemory.Internal;
 using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -27,8 +27,10 @@ namespace Microsoft.EntityFrameworkCore
         {
             var serviceProvider = InMemoryTestHelpers.Instance.CreateServiceProvider();
 
-            var store1 = InMemoryTestHelpers.Instance.CreateContextServices(serviceProvider, CreateModel()).GetRequiredService<IInMemoryDatabase>();
-            var store2 = InMemoryTestHelpers.Instance.CreateContextServices(serviceProvider, CreateModel()).GetRequiredService<IInMemoryDatabase>();
+            var store1 = InMemoryTestHelpers.Instance.CreateContextServices(serviceProvider, CreateModel())
+                .GetRequiredService<IInMemoryDatabase>();
+            var store2 = InMemoryTestHelpers.Instance.CreateContextServices(serviceProvider, CreateModel())
+                .GetRequiredService<IInMemoryDatabase>();
 
             Assert.Same(store1.Store, store2.Store);
         }
@@ -114,7 +116,9 @@ namespace Microsoft.EntityFrameworkCore
             await inMemoryDatabase.SaveChangesAsync(new[] { entityEntry });
 
             Assert.Equal(1, inMemoryDatabase.Store.GetTables(entityEntry.EntityType).SelectMany(t => t.Rows).Count());
-            Assert.Equal(new object[] { 42, "Unikorn, The Return" }, inMemoryDatabase.Store.GetTables(entityEntry.EntityType).Single().Rows.Single());
+            Assert.Equal(
+                new object[] { 42, "Unikorn, The Return" },
+                inMemoryDatabase.Store.GetTables(entityEntry.EntityType).Single().Rows.Single());
         }
 
         [Fact]
@@ -170,7 +174,7 @@ namespace Microsoft.EntityFrameworkCore
             var (Level, _, Message, _, _) = loggerFactory.Log.Single(t => t.Id.Id == InMemoryEventId.ChangesSaved.Id);
 
             Assert.Equal(LogLevel.Information, Level);
-            Assert.Equal(InMemoryStrings.LogSavedChanges.GenerateMessage(1), Message);
+            Assert.Equal(InMemoryStrings.LogSavedChanges(new TestLogger<InMemoryLoggingDefinitions>()).GenerateMessage(1), Message);
         }
 
         private static IModel CreateModel()

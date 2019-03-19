@@ -12,12 +12,21 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class Model : ConventionalAnnotatable, IMutableModel
     {
@@ -69,7 +78,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual ConventionDispatcher ConventionDispatcher { [DebuggerStepThrough] get; }
+        public virtual ConventionDispatcher ConventionDispatcher { [DebuggerStepThrough] get; private set; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -116,44 +125,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             return AddEntityType(entityType);
         }
 
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public virtual EntityType AddQueryType(
-            [NotNull] Type type,
-            // ReSharper disable once MethodOverloadWithOptionalParameter
-            ConfigurationSource configurationSource = ConfigurationSource.Explicit)
-        {
-            Check.NotNull(type, nameof(type));
-
-            var queryType = new EntityType(type, this, configurationSource)
-            {
-                IsQueryType = true
-            };
-
-            return AddEntityType(queryType);
-        }
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public virtual EntityType AddQueryType(
-            [NotNull] string name,
-            // ReSharper disable once MethodOverloadWithOptionalParameter
-            ConfigurationSource configurationSource = ConfigurationSource.Explicit)
-        {
-            Check.NotEmpty(name, nameof(name));
-
-            var queryType = new EntityType(name, this, configurationSource)
-            {
-                IsQueryType = true
-            };
-
-            return AddEntityType(queryType);
-        }
-
         private EntityType AddEntityType(EntityType entityType)
         {
             var entityTypeName = entityType.Name;
@@ -198,19 +169,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
                 if (_entityTypes.TryGetValue(entityTypeName, out var clashingEntityType))
                 {
-                    if (clashingEntityType.IsQueryType)
-                    {
-                        if (entityType.IsQueryType)
-                        {
-                            throw new InvalidOperationException(CoreStrings.DuplicateQueryType(entityType.DisplayName()));
-                        }
-                        throw new InvalidOperationException(CoreStrings.CannotAccessQueryAsEntity(entityType.DisplayName()));
-                    }
-
-                    if (entityType.IsQueryType)
-                    {
-                        throw new InvalidOperationException(CoreStrings.CannotAccessEntityAsQuery(entityType.DisplayName()));
-                    }
                     throw new InvalidOperationException(CoreStrings.DuplicateEntityType(entityType.DisplayName()));
                 }
 
@@ -482,9 +440,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             return !_entityTypesWithDefiningNavigation.TryGetValue(name, out var entityTypesWithSameType)
                 ? null
                 : entityTypesWithSameType
-                .FirstOrDefault(
-                    e => e.DefiningNavigationName == definingNavigationName
-                         && e.DefiningEntityType.Name == definingEntityTypeName);
+                    .FirstOrDefault(
+                        e => e.DefiningNavigationName == definingNavigationName
+                             && e.DefiningEntityType.Name == definingEntityTypeName);
         }
 
         /// <summary>
@@ -654,7 +612,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalModelBuilder Validate() => ConventionDispatcher.OnModelBuilt(Builder);
+        public virtual IModel Finalize()
+        {
+            var finalModel = ConventionDispatcher.OnModelBuilt(Builder)?.Metadata;
+            if (finalModel != null)
+            {
+                finalModel.ConventionDispatcher = null;
+            }
+            return finalModel;
+        }
 
         IEntityType IModel.FindEntityType(string name) => FindEntityType(name);
         IEnumerable<IEntityType> IModel.GetEntityTypes() => GetEntityTypes();
@@ -662,7 +628,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         IMutableEntityType IMutableModel.FindEntityType(string name) => FindEntityType(name);
         IMutableEntityType IMutableModel.AddEntityType(string name) => AddEntityType(name);
         IMutableEntityType IMutableModel.AddEntityType(Type type) => AddEntityType(type);
-        IMutableEntityType IMutableModel.AddQueryType(Type type) => AddQueryType(type);
         IMutableEntityType IMutableModel.RemoveEntityType(string name) => RemoveEntityType(name);
 
         IEntityType IModel.FindEntityType(string name, string definingNavigationName, IEntityType definingEntityType)

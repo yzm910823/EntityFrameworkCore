@@ -27,11 +27,11 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
         }
 
         [Fact]
-        public void Model_differ_does_not_detect_query_types()
+        public void Model_differ_does_not_detect_keyless_types()
         {
             Execute(
                 _ => { },
-                modelBuilder => modelBuilder.Query<TestQueryType>(),
+                modelBuilder => modelBuilder.Entity<TestQueryType>().HasNoKey(),
                 result => Assert.Equal(0, result.Count));
         }
 
@@ -1586,8 +1586,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
                 {
                     x.ToTable("Crab");
 
-                    x.Property<string>("CrabId")
-                        .ValueGeneratedOnAdd();
+                    x.Property<string>("CrabId");
 
                     x.HasKey("CrabId");
                 });
@@ -7280,9 +7279,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
 
         private class Order
         {
-#pragma warning disable IDE0044 // Add readonly modifier
-            private int _secretId;
-#pragma warning restore IDE0044 // Add readonly modifier
+            private readonly int _secretId;
 
             public Order()
             {
@@ -7493,6 +7490,62 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
         }
 
         [Fact]
+        public void Old_style_ownership_to_new_style()
+        {
+            Execute(
+                common =>
+                {
+                    common.Entity("Order", b =>
+                    {
+                        b.Property<int>("Id")
+                            .ValueGeneratedOnAdd();
+
+                        b.HasKey("Id");
+
+                        b.ToTable("Order");
+                    });
+                },
+                source => {
+                    source.Entity("Order", b =>
+                    {
+                        b.OwnsOne("OrderInfo", "OrderInfo", b1 =>
+                        {
+                            b1.Property<int>("OrderId")
+                                .ValueGeneratedOnAdd();
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("Order");
+
+                            b1.HasOne("Order")
+                                .WithOne("OrderInfo")
+                                .HasForeignKey("OrderInfo", "OrderId")
+                                .OnDelete(DeleteBehavior.Cascade);
+                        });
+                    });
+                },
+                target => {
+                    target.Entity("Order", b =>
+                    {
+                        b.OwnsOne("OrderInfo", "OrderInfo", b1 =>
+                        {
+                            b1.Property<int>("OrderId")
+                                .ValueGeneratedOnAdd();
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("Order");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+                    });
+                },
+                Assert.Empty,
+                Assert.Empty);
+        }
+
+        [Fact]
         public void Move_properties_to_owned_type()
         {
             Execute(
@@ -7671,21 +7724,23 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
         {
             Execute(
                 _ => { },
-                target => target.Entity<Customer13300>(builder =>
-                {
-                    builder.OwnsOne(
-                        o => o.Created,
-                        sa => sa.Property(p => p.Reason).HasMaxLength(255).IsUnicode(false));
+                target => target.Entity<Customer13300>(
+                    builder =>
+                    {
+                        builder.OwnsOne(
+                            o => o.Created,
+                            sa => sa.Property(p => p.Reason).HasMaxLength(255).IsUnicode(false));
 
-                    builder.Property(x => x.TenantId).IsRequired();
-                    builder.HasKey(x => new { x.TenantId, x.ProviderKey });
-                    builder.Property(x => x.ProviderKey).HasMaxLength(50).IsUnicode(false);
-                }),
+                        builder.Property(x => x.TenantId).IsRequired();
+                        builder.HasKey(x => new { x.TenantId, x.ProviderKey });
+                        builder.Property(x => x.ProviderKey).HasMaxLength(50).IsUnicode(false);
+                    }),
                 operations =>
                 {
                     var createTableOperation = Assert.IsType<CreateTableOperation>(Assert.Single(operations));
 
-                    Assert.Collection(createTableOperation.Columns,
+                    Assert.Collection(
+                        createTableOperation.Columns,
                         c =>
                         {
                             Assert.Equal("TenantId", c.Name);
@@ -7704,7 +7759,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
                             Assert.False(c.IsUnicode);
                         },
                         c => Assert.Equal("DisplayName", c.Name)
-                        );
+                    );
                 });
         }
 
@@ -7737,12 +7792,13 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
                 target =>
                 {
                     target.Entity<Principal>();
-                    target.Entity<Dependent>(b =>
-                    {
-                        b.Property<int>("ShadowPk");
-                        b.Property<int>("AnotherShadowProperty");
-                        b.HasKey("Id1", "Id2", "Id3", "ShadowPk");
-                    });
+                    target.Entity<Dependent>(
+                        b =>
+                        {
+                            b.Property<int>("ShadowPk");
+                            b.Property<int>("AnotherShadowProperty");
+                            b.HasKey("Id1", "Id2", "Id3", "ShadowPk");
+                        });
                 },
                 operations =>
                 {

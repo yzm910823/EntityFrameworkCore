@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.Sqlite.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -50,7 +52,7 @@ namespace Microsoft.Extensions.DependencyInjection
         ///           public void ConfigureServices(IServiceCollection services)
         ///           {
         ///               var connectionString = "connection string to database";
-        /// 
+        ///
         ///               services
         ///                   .AddEntityFrameworkSqlite()
         ///                   .AddDbContext&lt;MyContext&gt;((serviceProvider, options) =>
@@ -68,6 +70,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Check.NotNull(serviceCollection, nameof(serviceCollection));
 
             var builder = new EntityFrameworkRelationalServicesBuilder(serviceCollection)
+                .TryAdd<LoggingDefinitions, SqliteLoggingDefinitions>()
                 .TryAdd<IDatabaseProvider, DatabaseProvider<SqliteOptionsExtension>>()
                 .TryAdd<IRelationalTypeMappingSource, SqliteTypeMappingSource>()
                 .TryAdd<ISqlGenerationHelper, SqliteSqlGenerationHelper>()
@@ -75,7 +78,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 .TryAdd<IModelValidator, SqliteModelValidator>()
                 .TryAdd<IConventionSetBuilder, SqliteConventionSetBuilder>()
                 .TryAdd<IUpdateSqlGenerator, SqliteUpdateSqlGenerator>()
-                .TryAdd<ISingletonUpdateSqlGenerator, SqliteUpdateSqlGenerator>()
                 .TryAdd<IModificationCommandBatchFactory, SqliteModificationCommandBatchFactory>()
                 .TryAdd<IRelationalConnection>(p => p.GetService<ISqliteRelationalConnection>())
                 .TryAdd<IMigrationsSqlGenerator, SqliteMigrationsSqlGenerator>()

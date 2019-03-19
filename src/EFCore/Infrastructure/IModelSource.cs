@@ -2,8 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Infrastructure
 {
@@ -16,6 +18,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
     ///         This interface is typically used by database providers (and other extensions). It is generally
     ///         not used in application code.
     ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public interface IModelSource
     {
@@ -25,10 +32,12 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// <param name="context"> The context the model is being produced for. </param>
         /// <param name="conventionSetBuilder"> The convention set to use when creating the model. </param>
         /// <param name="validator"> The validator to verify the model can be successfully used with the context. </param>
+        /// <param name="loggers"> The loggers to use. </param>
         /// <returns> The model to be used. </returns>
         IModel GetModel(
             [NotNull] DbContext context,
             [NotNull] IConventionSetBuilder conventionSetBuilder,
-            [NotNull] IModelValidator validator);
+            [NotNull] IModelValidator validator,
+            DiagnosticsLoggers loggers);
     }
 }

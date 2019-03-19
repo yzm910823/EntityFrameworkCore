@@ -82,18 +82,12 @@ namespace Microsoft.EntityFrameworkCore
         /// <summary>
         ///     <para>
         ///         Sets the <see cref="ILoggerFactory" /> that will be used to create <see cref="ILogger" /> instances
-        ///         for logging done by this context. It is never necessary to call this method since EF can obtain
-        ///         or create a logger factory automatically.
+        ///         for logging done by this context.
         ///     </para>
         ///     <para>
         ///         There is no need to call this method when using one of the 'AddDbContext' methods.
         ///         'AddDbContext' will ensure that the <see cref="ILoggerFactory" /> used by EF is obtained from the
         ///         application service provider.
-        ///     </para>
-        ///     <para>
-        ///         Note that changing the logger factory can cause EF to build a new internal service provider, which
-        ///         may cause issues with performance. Generally it is expected that no more than one or two different
-        ///         instances will be used for a given application.
         ///     </para>
         ///     <para>
         ///         This method cannot be used if the application is setting the internal service provider
@@ -130,13 +124,7 @@ namespace Microsoft.EntityFrameworkCore
 
         /// <summary>
         ///     <para>
-        ///         Sets the <see cref="IMemoryCache" /> to be used for query caching by this context. It is never
-        ///         necessary to call this method since EF can obtain or create a memory cache automatically.
-        ///     </para>
-        ///     <para>
-        ///         There is no need to call this method when using one of the 'AddDbContext' methods.
-        ///         'AddDbContext' will ensure that the <see cref="IMemoryCache" /> used by EF is obtained from the
-        ///         application service provider.
+        ///         Sets the <see cref="IMemoryCache" /> to be used for query caching by this context.
         ///     </para>
         ///     <para>
         ///         Note that changing the memory cache can cause EF to build a new internal service provider, which
@@ -199,9 +187,26 @@ namespace Microsoft.EntityFrameworkCore
         ///         so that EF will manage the service providers and can create new instances as required.
         ///     </para>
         /// </summary>
+        /// <param name="sensitiveDataLoggingEnabled"> If <c>true</c>, then sensitive data is logged. </param>
         /// <returns> The same builder instance so that multiple calls can be chained. </returns>
         public virtual DbContextOptionsBuilder EnableSensitiveDataLogging(bool sensitiveDataLoggingEnabled = true)
             => WithOption(e => e.WithSensitiveDataLoggingEnabled(sensitiveDataLoggingEnabled));
+
+        /// <summary>
+        ///     <para>
+        ///         Enables or disables caching of internal service providers. Disabling caching can
+        ///         massively impact performance and should only be used in testing scenarios that
+        ///         build many service providers for test isolation.
+        ///     </para>
+        ///     <para>
+        ///         Note that if the application is setting the internal service provider through a call to
+        ///         <see cref="UseInternalServiceProvider" />, then setting this option wil have no effect.
+        ///     </para>
+        /// </summary>
+        /// <param name="cacheServiceProvider"> If <c>true</c>, then the internal service provider is cached. </param>
+        /// <returns> The same builder instance so that multiple calls can be chained. </returns>
+        public virtual DbContextOptionsBuilder EnableServiceProviderCaching(bool cacheServiceProvider = true)
+            => WithOption(e => e.WithCacheServiceProvider(cacheServiceProvider));
 
         /// <summary>
         ///     <para>

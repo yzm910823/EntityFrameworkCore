@@ -12,12 +12,21 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class Migrator : IMigrator
     {
@@ -86,7 +95,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
                     _databaseCreator.Create();
                 }
 
-                var command = _rawSqlCommandBuilder.Build(_historyRepository.GetCreateScript());
+                var command = _rawSqlCommandBuilder.Build(
+                    _historyRepository.GetCreateScript());
 
                 command.ExecuteNonQuery(_connection);
             }
@@ -115,7 +125,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
                     await _databaseCreator.CreateAsync(cancellationToken);
                 }
 
-                var command = _rawSqlCommandBuilder.Build(_historyRepository.GetCreateScript());
+                var command = _rawSqlCommandBuilder.Build(
+                    _historyRepository.GetCreateScript());
 
                 await command.ExecuteNonQueryAsync(_connection, cancellationToken: cancellationToken);
             }

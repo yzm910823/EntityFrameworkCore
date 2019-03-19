@@ -80,17 +80,18 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
 
             var nestedEntitiesExpression = nestedEntities.Count == 0
                 ? (Expression)Expression.Constant(null, typeof(IList<EntityInfo>))
-                : Expression.ListInit(Expression.New(typeof(List<EntityInfo>)),
+                : Expression.ListInit(
+                    Expression.New(typeof(List<EntityInfo>)),
                     nestedEntities.Select(n => Expression.ElementInit(_listAddMethodInfo, n)));
 
             return Expression.New(
-                    EntityInfo.ConstructorInfo,
-                    Expression.Constant(navigation, typeof(INavigation)),
-                    Expression.Constant(entityType.FindPrimaryKey(), typeof(IKey)),
-                    valueBufferFactory,
-                    materializer,
-                    Expression.Constant(indexMap, typeof(Dictionary<Type, int[]>)),
-                    nestedEntitiesExpression);
+                EntityInfo.ConstructorInfo,
+                Expression.Constant(navigation, typeof(INavigation)),
+                Expression.Constant(entityType.FindPrimaryKey(), typeof(IKey)),
+                valueBufferFactory,
+                materializer,
+                Expression.Constant(indexMap, typeof(Dictionary<Type, int[]>)),
+                nestedEntitiesExpression);
         }
 
         private LambdaExpression CreateMaterializerExpression(
@@ -101,7 +102,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
             typeIndexMap = null;
 
             var materializationContextParameter
-                                        = Expression.Parameter(typeof(MaterializationContext), "materializationContext");
+                = Expression.Parameter(typeof(MaterializationContext), "materializationContext");
 
             var concreteEntityTypes = entityType.GetConcreteTypesInHierarchy().ToList();
             var firstEntityType = concreteEntityTypes[0];
@@ -144,8 +145,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                             .CreateReadValueExpression(
                                 Expression.Call(materializationContextParameter, MaterializationContext.GetValueBufferMethod),
                                 discriminatorProperty.ClrType,
-                                indexMap[discriminatorProperty.GetIndex()],
-                                discriminatorProperty)),
+                                indexMap[discriminatorProperty.GetIndex()])),
                     Expression.IfThenElse(
                         Expression.Equal(discriminatorValueVariable, firstDiscriminatorValue),
                         Expression.Return(returnLabelTarget, materializer),
@@ -172,6 +172,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                         usedProperties.Add(property);
                         propertyIndex = usedProperties.Count - 1;
                     }
+
                     indexMap[property.GetIndex()] = propertyIndex;
 
                     shadowPropertyExists = shadowPropertyExists || property.IsShadowProperty;
@@ -244,32 +245,32 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
 
                 var entity = entityInfo.Materializer(new MaterializationContext(valueBuffer, queryContext.Context));
                 return ShapeNestedEntities(
-                            jObject,
-                            queryContext,
-                            trackingQuery,
-                            bufferedQuery,
-                            entityInfo,
-                            entity);
+                    jObject,
+                    queryContext,
+                    trackingQuery,
+                    bufferedQuery,
+                    entityInfo,
+                    entity);
             }
             else
             {
                 var entity = queryContext.QueryBuffer
-                        .GetEntity(
-                            entityInfo.Key,
-                            new EntityLoadInfo(
-                                new MaterializationContext(valueBuffer, queryContext.Context),
-                                entityInfo.Materializer,
-                                entityInfo.TypeIndexMap),
-                            queryStateManager: trackingQuery,
-                            throwOnNullKey: true);
+                    .GetEntity(
+                        entityInfo.Key,
+                        new EntityLoadInfo(
+                            new MaterializationContext(valueBuffer, queryContext.Context),
+                            entityInfo.Materializer,
+                            entityInfo.TypeIndexMap),
+                        queryStateManager: trackingQuery,
+                        throwOnNullKey: true);
 
                 return ShapeNestedEntities(
-                            jObject,
-                            queryContext,
-                            trackingQuery,
-                            bufferedQuery,
-                            entityInfo,
-                            entity);
+                    jObject,
+                    queryContext,
+                    trackingQuery,
+                    bufferedQuery,
+                    entityInfo,
+                    entity);
             }
         }
 
@@ -289,9 +290,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
             foreach (var nestedEntityInfo in entityInfo.NestedEntities)
             {
                 var nestedNavigation = nestedEntityInfo.Navigation;
-                if (nestedNavigation.ForeignKey.IsUnique)
+                var nestedFk = nestedNavigation.ForeignKey;
+                if (nestedFk.IsUnique)
                 {
-                    if (!(jObject[nestedEntityInfo.Navigation.Name] is JObject nestedJObject))
+                    if (!(jObject[nestedFk.DeclaringEntityType.Cosmos().ContainingPropertyName] is JObject nestedJObject))
                     {
                         continue;
                     }
@@ -307,17 +309,18 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                 else
                 {
                     var nestedEntities = new List<object>();
-                    if (jObject[nestedEntityInfo.Navigation.Name] is JArray jArray
+                    if (jObject[nestedFk.DeclaringEntityType.Cosmos().ContainingPropertyName] is JArray jArray
                         && jArray.Count != 0)
                     {
                         foreach (JObject nestedJObject in jArray)
                         {
-                            nestedEntities.Add(Shape(
-                                nestedJObject,
-                                queryContext,
-                                trackingQuery,
-                                bufferedQuery,
-                                nestedEntityInfo));
+                            nestedEntities.Add(
+                                Shape(
+                                    nestedJObject,
+                                    queryContext,
+                                    trackingQuery,
+                                    bufferedQuery,
+                                    nestedEntityInfo));
                         }
                     }
 

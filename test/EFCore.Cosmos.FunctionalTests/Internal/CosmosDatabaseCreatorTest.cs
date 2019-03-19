@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Cosmos.TestUtilities;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -15,7 +14,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
     {
         [ConditionalTheory]
         [InlineData(true)]
-        //[InlineData(false)]
+        [InlineData(false)]
         public async Task EnsureCreated_returns_true_when_database_does_not_exist(bool async)
         {
             using (var testDatabase = CosmosTestStore.Create("NonExisting"))
@@ -31,7 +30,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
 
         [ConditionalTheory]
         [InlineData(true)]
-        //[InlineData(false)]
+        [InlineData(false)]
         public async Task EnsureCreated_returns_true_when_database_exists_but_collections_does_not(bool async)
         {
             using (var testDatabase = CosmosTestStore.CreateInitialized("EnsureCreatedTest"))
@@ -47,7 +46,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
 
         [ConditionalTheory]
         [InlineData(true)]
-        //[InlineData(false)]
+        [InlineData(false)]
         public async Task EnsureCreated_returns_false_when_database_and_collections_exists(bool async)
         {
             using (var testDatabase = CosmosTestStore.Create("EnsureCreatedReady"))
@@ -65,7 +64,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
 
         [ConditionalTheory]
         [InlineData(true)]
-        //[InlineData(false)]
+        [InlineData(false)]
         public async Task EnsureDeleted_returns_true_when_database_exists(bool async)
         {
             using (var testDatabase = CosmosTestStore.CreateInitialized("EnsureDeleteBlogging"))
@@ -81,7 +80,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
 
         [ConditionalTheory]
         [InlineData(true)]
-        //[InlineData(false)]
+        [InlineData(false)]
         public async Task EnsureDeleted_returns_false_when_database_does_not_exist(bool async)
         {
             using (var testDatabase = CosmosTestStore.Create("EnsureDeleteBlogging"))

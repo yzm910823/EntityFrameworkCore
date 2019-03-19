@@ -8,7 +8,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
 
@@ -185,7 +184,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     </para>
         ///     <para>
         ///         For relational databases, the underlying DbTransaction can be obtained using the
-        ///         'Microsoft.EntityFrameworkCore.Storage.GetDbTransaction'extension method
+        ///         'Microsoft.EntityFrameworkCore.Storage.GetDbTransaction' extension method
         ///         on the returned <see cref="IDbContextTransaction" />.
         ///     </para>
         /// </summary>

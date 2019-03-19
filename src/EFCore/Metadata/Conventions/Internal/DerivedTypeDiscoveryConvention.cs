@@ -3,6 +3,8 @@
 
 using System.Linq;
 using System.Reflection;
+using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
@@ -13,6 +15,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
     /// </summary>
     public class DerivedTypeDiscoveryConvention : InheritanceDiscoveryConventionBase, IEntityTypeAddedConvention
     {
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public DerivedTypeDiscoveryConvention([NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> logger)
+            : base(logger)
+        {
+        }
+
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
@@ -29,13 +40,13 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             var model = entityType.Model;
             var directlyDerivedTypes = model.GetEntityTypes().Where(
-                t => t != entityType
-                     && t.HasClrType()
-                     && !t.HasDefiningNavigation()
-                     && t.FindDeclaredOwnership() == null
-                     && !model.ShouldBeOwnedType(model.GetDisplayName(t.ClrType))
-                     && ((t.BaseType == null && clrType.GetTypeInfo().IsAssignableFrom(t.ClrType.GetTypeInfo()))
-                         || (t.BaseType == entityType.BaseType && FindClosestBaseType(t) == entityType)))
+                    t => t != entityType
+                         && t.HasClrType()
+                         && !t.HasDefiningNavigation()
+                         && t.FindDeclaredOwnership() == null
+                         && !model.ShouldBeOwnedType(model.GetDisplayName(t.ClrType))
+                         && ((t.BaseType == null && clrType.GetTypeInfo().IsAssignableFrom(t.ClrType.GetTypeInfo()))
+                             || (t.BaseType == entityType.BaseType && FindClosestBaseType(t) == entityType)))
                 .ToList();
 
             foreach (var directlyDerivedType in directlyDerivedTypes)

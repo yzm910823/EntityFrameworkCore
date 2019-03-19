@@ -13,12 +13,20 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class MaterializerFactory : IMaterializerFactory
     {
@@ -95,8 +103,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
                             .CreateReadValueExpression(
                                 Expression.Call(materializationContextParameter, MaterializationContext.GetValueBufferMethod),
                                 discriminatorProperty.ClrType,
-                                indexMap[discriminatorProperty.GetIndex()],
-                                discriminatorProperty)),
+                                indexMap[discriminatorProperty.GetIndex()])),
                     Expression.IfThenElse(
                         Expression.Equal(discriminatorValueVariable, firstDiscriminatorValue),
                         Expression.Return(returnLabelTarget, materializer),

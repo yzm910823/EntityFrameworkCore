@@ -30,6 +30,25 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
+        public static MemberInfo GetNavigationMemberInfo(
+            [NotNull] this IEntityType entityType,
+            [NotNull] string navigationName)
+        {
+            var memberInfo = entityType.ClrType.GetMembersInHierarchy(navigationName).FirstOrDefault();
+
+            if (memberInfo == null)
+            {
+                throw new InvalidOperationException(
+                    CoreStrings.NoClrNavigation(navigationName, entityType.DisplayName()));
+            }
+
+            return memberInfo;
+        }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
         [DebuggerStepThrough]
         public static string ShortName([NotNull] this IEntityType type)
         {
@@ -670,7 +689,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             builder
                 .Append(indent)
-                .Append(!entityType.IsQueryType ? "EntityType: " : "QueryType: ")
+                .Append("EntityType: ")
                 .Append(entityType.DisplayName());
 
             if (entityType.BaseType != null)
@@ -681,6 +700,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             if (entityType.IsAbstract())
             {
                 builder.Append(" Abstract");
+            }
+
+            if (entityType.FindPrimaryKey() == null)
+            {
+                builder.Append(" Keyless");
             }
 
             if (entityType.GetChangeTrackingStrategy() != ChangeTrackingStrategy.Snapshot)

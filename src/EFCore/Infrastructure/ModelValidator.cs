@@ -8,15 +8,24 @@ using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Infrastructure
 {
     /// <summary>
-    ///     The validator that enforces core rules common for all providers.
+    ///     <para>
+    ///         The validator that enforces core rules common for all providers.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class ModelValidator : IModelValidator
     {
@@ -40,30 +49,31 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     Validates a model, throwing an exception if any errors are found.
         /// </summary>
         /// <param name="model"> The model to validate. </param>
-        public virtual void Validate(IModel model)
+        /// <param name="loggers"> Loggers to use. </param>
+        public virtual void Validate(IModel model, DiagnosticsLoggers loggers)
         {
-            ValidateNoShadowEntities(model);
-            ValidateDefiningNavigations(model);
-            ValidateOwnership(model);
-            ValidateNonNullPrimaryKeys(model);
-            ValidateNoShadowKeys(model);
-            ValidateNoMutableKeys(model);
-            ValidateNoCycles(model);
-            ValidateClrInheritance(model);
-            ValidateChangeTrackingStrategy(model);
-            ValidateForeignKeys(model);
-            ValidateFieldMapping(model);
-            ValidateQueryTypes(model);
-            ValidateQueryFilters(model);
-            ValidateData(model);
-            LogShadowProperties(model);
+            ValidateNoShadowEntities(model, loggers);
+            ValidateDefiningNavigations(model, loggers);
+            ValidateOwnership(model, loggers);
+            ValidateNonNullPrimaryKeys(model, loggers);
+            ValidateNoShadowKeys(model, loggers);
+            ValidateNoMutableKeys(model, loggers);
+            ValidateNoCycles(model, loggers);
+            ValidateClrInheritance(model, loggers);
+            ValidateChangeTrackingStrategy(model, loggers);
+            ValidateForeignKeys(model, loggers);
+            ValidateFieldMapping(model, loggers);
+            ValidateKeylessTypes(model, loggers);
+            ValidateQueryFilters(model, loggers);
+            ValidateData(model, loggers);
+            LogShadowProperties(model, loggers);
         }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateNoShadowEntities([NotNull] IModel model)
+        protected virtual void ValidateNoShadowEntities([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -79,7 +89,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateNoShadowKeys([NotNull] IModel model)
+        protected virtual void ValidateNoShadowKeys([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -118,7 +128,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateNoMutableKeys([NotNull] IModel model)
+        protected virtual void ValidateNoMutableKeys([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -139,7 +149,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateNoCycles([NotNull] IModel model)
+        protected virtual void ValidateNoCycles([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             var unvalidatedEntityTypes = new HashSet<IEntityType>(model.GetEntityTypes());
             foreach (var entityType in model.GetEntityTypes())
@@ -181,13 +191,13 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateNonNullPrimaryKeys([NotNull] IModel model)
+        protected virtual void ValidateNonNullPrimaryKeys([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
             var entityTypeWithNullPk
                 = model.GetEntityTypes()
-                    .FirstOrDefault(et => !et.IsQueryType && et.BaseType == null && et.FindPrimaryKey() == null);
+                    .FirstOrDefault(et => !((EntityType)et).IsKeyless && et.BaseType == null && et.FindPrimaryKey() == null);
 
             if (entityTypeWithNullPk != null)
             {
@@ -200,14 +210,14 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateClrInheritance([NotNull] IModel model)
+        protected virtual void ValidateClrInheritance([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
             var validEntityTypes = new HashSet<IEntityType>();
             foreach (var entityType in model.GetEntityTypes())
             {
-                ValidateClrInheritance(model, entityType, validEntityTypes);
+                ValidateClrInheritance(model, entityType, validEntityTypes, loggers);
             }
         }
 
@@ -216,7 +226,10 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual void ValidateClrInheritance(
-            [NotNull] IModel model, [NotNull] IEntityType entityType, [NotNull] HashSet<IEntityType> validEntityTypes)
+            [NotNull] IModel model,
+            [NotNull] IEntityType entityType,
+            [NotNull] HashSet<IEntityType> validEntityTypes,
+            DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
             Check.NotNull(entityType, nameof(entityType));
@@ -264,7 +277,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateChangeTrackingStrategy([NotNull] IModel model)
+        protected virtual void ValidateChangeTrackingStrategy([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -282,7 +295,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateOwnership([NotNull] IModel model)
+        protected virtual void ValidateOwnership([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -303,8 +316,9 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                         throw new InvalidOperationException(CoreStrings.OwnedDerivedType(entityType.DisplayName()));
                     }
 
-                    foreach (var referencingFk in entityType.GetReferencingForeignKeys().Where(fk => !fk.IsOwnership
-                        && !Contains(fk.DeclaringEntityType.FindOwnership(), fk)))
+                    foreach (var referencingFk in entityType.GetReferencingForeignKeys().Where(
+                        fk => !fk.IsOwnership
+                              && !Contains(fk.DeclaringEntityType.FindOwnership(), fk)))
                     {
                         throw new InvalidOperationException(
                             CoreStrings.PrincipalOwnedType(
@@ -319,8 +333,9 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                                 entityType.DisplayName()));
                     }
 
-                    foreach (var fk in entityType.GetDeclaredForeignKeys().Where(fk => !fk.IsOwnership && fk.PrincipalToDependent != null
-                        && !Contains(fk.DeclaringEntityType.FindOwnership(), fk)))
+                    foreach (var fk in entityType.GetDeclaredForeignKeys().Where(
+                        fk => !fk.IsOwnership && fk.PrincipalToDependent != null
+                                              && !Contains(fk.DeclaringEntityType.FindOwnership(), fk)))
                     {
                         throw new InvalidOperationException(
                             CoreStrings.InverseToOwnedType(
@@ -339,15 +354,17 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
 
         private bool Contains(IForeignKey inheritedFk, IForeignKey derivedFk)
             => inheritedFk != null
-                && inheritedFk.PrincipalEntityType.IsAssignableFrom(derivedFk.PrincipalEntityType)
-                && PropertyListComparer.Instance.Equals(inheritedFk.Properties, derivedFk.Properties);
+               && inheritedFk.PrincipalEntityType.IsAssignableFrom(derivedFk.PrincipalEntityType)
+               && PropertyListComparer.Instance.Equals(inheritedFk.Properties, derivedFk.Properties);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateForeignKeys([NotNull] IModel model)
+        protected virtual void ValidateForeignKeys([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
+            var modelLogger = loggers.GetLogger<DbLoggerCategory.Model>();
+
             foreach (var entityType in model.GetEntityTypes())
             {
                 foreach (var declaredForeignKey in entityType.GetDeclaredForeignKeys())
@@ -355,7 +372,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                     if (declaredForeignKey.PrincipalEntityType == declaredForeignKey.DeclaringEntityType
                         && PropertyListComparer.Instance.Equals(declaredForeignKey.PrincipalKey.Properties, declaredForeignKey.Properties))
                     {
-                        Dependencies.ModelLogger.RedundantForeignKeyWarning(declaredForeignKey);
+                        modelLogger.RedundantForeignKeyWarning(declaredForeignKey);
                     }
 
                     if (entityType.BaseType == null)
@@ -392,7 +409,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateDefiningNavigations([NotNull] IModel model)
+        protected virtual void ValidateDefiningNavigations([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -440,7 +457,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateFieldMapping([NotNull] IModel model)
+        protected virtual void ValidateFieldMapping([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -499,26 +516,24 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateQueryTypes([NotNull] IModel model)
+        protected virtual void ValidateKeylessTypes([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
             foreach (var entityType in model.GetEntityTypes())
             {
-                if (entityType.IsQueryType)
+                if (entityType.DefiningQuery != null)
                 {
-                    if (entityType.BaseType != null
-                        && entityType.DefiningQuery != null)
+                    if (entityType.BaseType != null)
                     {
                         throw new InvalidOperationException(
-                            CoreStrings.DerivedQueryTypeDefiningQuery(entityType.DisplayName(), entityType.BaseType.DisplayName()));
+                            CoreStrings.DerivedTypeDefiningQuery(entityType.DisplayName(), entityType.BaseType.DisplayName()));
                     }
 
-                    var key = entityType.GetKeys().FirstOrDefault();
-                    if (key != null)
+                    if (entityType.FindPrimaryKey() != null)
                     {
                         throw new InvalidOperationException(
-                            CoreStrings.QueryTypeWithKey(Property.Format(key.Properties), entityType.DisplayName()));
+                            CoreStrings.NonKeylessEntityTypeDefiningQuery(entityType.DisplayName()));
                     }
                 }
             }
@@ -528,7 +543,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateQueryFilters([NotNull] IModel model)
+        protected virtual void ValidateQueryFilters([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
@@ -549,16 +564,21 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateData([NotNull] IModel model)
+        protected virtual void ValidateData([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
 
             var identityMaps = new Dictionary<IKey, IIdentityMap>();
-            var sensitiveDataLogged = Dependencies.Logger.ShouldLogSensitiveData();
+            var sensitiveDataLogged = loggers.GetLogger<DbLoggerCategory.Model.Validation>().ShouldLogSensitiveData();
 
-            foreach (var entityType in model.GetEntityTypes().Where(et => !et.IsQueryType))
+            foreach (var entityType in model.GetEntityTypes())
             {
                 var key = entityType.FindPrimaryKey();
+                if (key == null)
+                {
+                    continue;
+                }
+
                 IIdentityMap identityMap = null;
                 foreach (var seedDatum in entityType.GetData())
                 {
@@ -568,20 +588,22 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                             || value == null)
                         {
                             if (!property.IsNullable
-                                && (!property.RequiresValueGenerator()
-                                    || property.IsKey()))
+                                && ((!property.RequiresValueGenerator()
+                                     && (property.ValueGenerated & ValueGenerated.OnAdd) == 0)
+                                    || property.IsPrimaryKey()))
                             {
                                 throw new InvalidOperationException(CoreStrings.SeedDatumMissingValue(entityType.DisplayName(), property.Name));
                             }
                         }
                         else if (property.RequiresValueGenerator()
-                                 && property.IsKey()
+                                 && property.IsPrimaryKey()
                                  && property.ClrType.IsDefaultValue(value))
                         {
                             if (property.ClrType.IsSignedInteger())
                             {
                                 throw new InvalidOperationException(CoreStrings.SeedDatumSignedNumericValue(entityType.DisplayName(), property.Name));
                             }
+
                             throw new InvalidOperationException(CoreStrings.SeedDatumDefaultValue(entityType.DisplayName(), property.Name, property.ClrType.GetDefaultValue()));
                         }
                         else if (!property.ClrType.GetTypeInfo().IsAssignableFrom(value.GetType().GetTypeInfo()))
@@ -666,9 +688,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void LogShadowProperties([NotNull] IModel model)
+        protected virtual void LogShadowProperties([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
+
+            var modelLogger = loggers.GetLogger<DbLoggerCategory.Model>();
 
             foreach (var entityType in model.GetEntityTypes().Where(t => t.ClrType != null))
             {
@@ -676,7 +700,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                 {
                     if (property.IsShadowProperty)
                     {
-                        Dependencies.ModelLogger.ShadowPropertyCreated(property);
+                        modelLogger.ShadowPropertyCreated(property);
                     }
                 }
             }

@@ -4,19 +4,27 @@
 using System;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class MigrationsIdGenerator : IMigrationsIdGenerator
     {
         private const string Format = "yyyyMMddHHmmss";
 
         private DateTime _lastTimestamp = DateTime.MinValue;
-        private object _lock = new object();
+        private readonly object _lock = new object();
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -54,7 +62,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
                 _lastTimestamp = timestamp;
             }
 
-            return timestamp.ToString(Format) + "_" + name;
+            return timestamp.ToString(Format, CultureInfo.InvariantCulture) + "_" + name;
         }
     }
 }

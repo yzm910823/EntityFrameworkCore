@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Update.Internal;
@@ -205,9 +206,12 @@ namespace Microsoft.EntityFrameworkCore
                 _current = -blockSize + 1;
             }
 
-            public IRelationalCommand Build(string sql) => new FakeRelationalCommand(this);
+            public IRelationalCommand Build(string sql)
+                => new FakeRelationalCommand(this);
 
-            public RawSqlCommand Build(string sql, IEnumerable<object> parameters)
+            public RawSqlCommand Build(
+                string sql,
+                IEnumerable<object> parameters)
                 => new RawSqlCommand(
                     new FakeRelationalCommand(this),
                     new Dictionary<string, object>());
@@ -232,7 +236,9 @@ namespace Microsoft.EntityFrameworkCore
                     throw new NotImplementedException();
                 }
 
-                public Task<int> ExecuteNonQueryAsync(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = default)
+                public Task<int> ExecuteNonQueryAsync(
+                    IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                    CancellationToken cancellationToken = default)
                 {
                     throw new NotImplementedException();
                 }
@@ -240,15 +246,20 @@ namespace Microsoft.EntityFrameworkCore
                 public object ExecuteScalar(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues)
                     => Interlocked.Add(ref _commandBuilder._current, _commandBuilder._blockSize);
 
-                public Task<object> ExecuteScalarAsync(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = default)
+                public Task<object> ExecuteScalarAsync(
+                    IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                    CancellationToken cancellationToken = default)
                     => Task.FromResult<object>(Interlocked.Add(ref _commandBuilder._current, _commandBuilder._blockSize));
 
-                public RelationalDataReader ExecuteReader(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues)
+                public RelationalDataReader ExecuteReader(
+                    IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues)
                 {
                     throw new NotImplementedException();
                 }
 
-                public Task<RelationalDataReader> ExecuteReaderAsync(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = default)
+                public Task<RelationalDataReader> ExecuteReaderAsync(
+                    IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                    CancellationToken cancellationToken = default)
                 {
                     throw new NotImplementedException();
                 }

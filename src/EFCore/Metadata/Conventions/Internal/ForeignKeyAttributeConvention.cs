@@ -21,7 +21,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
     public class ForeignKeyAttributeConvention : IForeignKeyAddedConvention, IModelBuiltConvention
     {
         private readonly IMemberClassifier _memberClassifier;
-        private readonly IDiagnosticsLogger<DbLoggerCategory.Model> _logger;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -34,8 +33,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             Check.NotNull(memberClassifier, nameof(memberClassifier));
 
             _memberClassifier = memberClassifier;
-            _logger = logger;
+            Logger = logger;
         }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        protected virtual IDiagnosticsLogger<DbLoggerCategory.Model> Logger { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -56,7 +61,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             if (fkPropertyOnDependent != null
                 && fkPropertyOnPrincipal != null)
             {
-                _logger.ForeignKeyAttributesOnBothPropertiesWarning(
+                Logger.ForeignKeyAttributesOnBothPropertiesWarning(
                     foreignKey.PrincipalToDependent,
                     foreignKey.DependentToPrincipal,
                     fkPropertyOnPrincipal,
@@ -80,7 +85,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             if (fkPropertiesOnDependentToPrincipal != null
                 && fkPropertiesOnPrincipalToDependent != null)
             {
-                _logger.ForeignKeyAttributesOnBothNavigationsWarning(
+                Logger.ForeignKeyAttributesOnBothNavigationsWarning(
                     relationshipBuilder.Metadata.DependentToPrincipal, relationshipBuilder.Metadata.PrincipalToDependent);
 
                 relationshipBuilder = SplitNavigationsToSeparateRelationships(relationshipBuilder);
@@ -121,6 +126,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                     {
                         return null;
                     }
+
                     invertConfigurationSource = ConfigurationSource.DataAnnotation;
                     fkPropertiesToSet = new List<string>
                     {
@@ -148,7 +154,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                     if (fkPropertiesOnNavigation.Count != 1
                         || !Equals(fkPropertiesOnNavigation.First(), fkProperty.GetSimpleMemberName()))
                     {
-                        _logger.ConflictingForeignKeyAttributesOnNavigationAndPropertyWarning(
+                        Logger.ConflictingForeignKeyAttributesOnNavigationAndPropertyWarning(
                             fkPropertiesOnDependentToPrincipal != null
                                 ? relationshipBuilder.Metadata.DependentToPrincipal
                                 : relationshipBuilder.Metadata.PrincipalToDependent,
@@ -200,10 +206,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                 if (existingProperties != null)
                 {
                     var conflictingFk = foreignKey.DeclaringEntityType.FindForeignKeys(existingProperties)
-                        .FirstOrDefault(fk => fk != foreignKey
-                            && fk.PrincipalEntityType == foreignKey.PrincipalEntityType
-                            && fk.GetConfigurationSource() == ConfigurationSource.DataAnnotation
-                            && fk.GetForeignKeyPropertiesConfigurationSource() == ConfigurationSource.DataAnnotation);
+                        .FirstOrDefault(
+                            fk => fk != foreignKey
+                                  && fk.PrincipalEntityType == foreignKey.PrincipalEntityType
+                                  && fk.GetConfigurationSource() == ConfigurationSource.DataAnnotation
+                                  && fk.GetForeignKeyPropertiesConfigurationSource() == ConfigurationSource.DataAnnotation);
                     if (conflictingFk != null)
                     {
                         throw new InvalidOperationException(
@@ -221,7 +228,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         {
             var foreignKey = relationshipBuilder.Metadata;
             var dependentToPrincipalNavigationName = foreignKey.DependentToPrincipal?.Name;
-            var principalToDepedentNavigationName = foreignKey.PrincipalToDependent?.Name;
+            var principalToDependentNavigationName = foreignKey.PrincipalToDependent?.Name;
 
             if (GetInversePropertyAttribute(foreignKey.PrincipalToDependent) != null
                 || GetInversePropertyAttribute(foreignKey.DependentToPrincipal) != null)
@@ -231,7 +238,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                     CoreStrings.InvalidRelationshipUsingDataAnnotations(
                         dependentToPrincipalNavigationName,
                         foreignKey.DeclaringEntityType.DisplayName(),
-                        principalToDepedentNavigationName,
+                        principalToDependentNavigationName,
                         foreignKey.PrincipalEntityType.DisplayName()));
             }
 
@@ -239,12 +246,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             return relationshipBuilder == null
                 ? null
                 : foreignKey.PrincipalEntityType.Builder.Relationship(
-                       foreignKey.DeclaringEntityType.Builder,
-                       principalToDepedentNavigationName,
-                       null,
-                       ConfigurationSource.DataAnnotation) == null
-                ? null
-                : relationshipBuilder;
+                      foreignKey.DeclaringEntityType.Builder,
+                      principalToDependentNavigationName,
+                      null,
+                      ConfigurationSource.DataAnnotation) == null
+                    ? null
+                    : relationshipBuilder;
         }
 
         private static ForeignKeyAttribute GetForeignKeyAttribute(TypeBase entityType, string propertyName)
@@ -394,10 +401,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                             = FindForeignKeyAttributeOnProperty(foreignKey.PrincipalEntityType, declaredNavigation.Name);
                         if (fkPropertyOnPrincipal != null)
                         {
-                            throw new InvalidOperationException(CoreStrings.FkAttributeOnNonUniquePrincipal(
-                                declaredNavigation.Name,
-                                foreignKey.PrincipalEntityType.DisplayName(),
-                                foreignKey.DeclaringEntityType.DisplayName()));
+                            throw new InvalidOperationException(
+                                CoreStrings.FkAttributeOnNonUniquePrincipal(
+                                    declaredNavigation.Name,
+                                    foreignKey.PrincipalEntityType.DisplayName(),
+                                    foreignKey.DeclaringEntityType.DisplayName()));
                         }
                     }
                 }

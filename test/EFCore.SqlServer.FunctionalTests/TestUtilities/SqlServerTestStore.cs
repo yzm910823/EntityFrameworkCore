@@ -110,7 +110,11 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
 
                     if (_fileName == null)
                     {
-                        using (var context = new DbContext(AddProviderOptions(new DbContextOptionsBuilder()).Options))
+                        using (var context = new DbContext(
+                            AddProviderOptions(
+                                    new DbContextOptionsBuilder()
+                                        .EnableServiceProviderCaching(false))
+                                .Options))
                         {
                             Clean(context);
                             return true;
@@ -316,8 +320,7 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
         private static T Execute<T>(
             DbConnection connection, Func<DbCommand, T> execute, string sql,
             bool useTransaction = false, object[] parameters = null)
-            => TestEnvironment.IsSqlAzure
-                ? new TestSqlServerRetryingExecutionStrategy().Execute(
+            => new TestSqlServerRetryingExecutionStrategy().Execute(
                     new
                     {
                         connection,
@@ -326,8 +329,7 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
                         useTransaction,
                         parameters
                     },
-                    state => ExecuteCommand(state.connection, state.execute, state.sql, state.useTransaction, state.parameters))
-                : ExecuteCommand(connection, execute, sql, useTransaction, parameters);
+                    state => ExecuteCommand(state.connection, state.execute, state.sql, state.useTransaction, state.parameters));
 
         private static T ExecuteCommand<T>(
             DbConnection connection, Func<DbCommand, T> execute, string sql, bool useTransaction, object[] parameters)
@@ -380,7 +382,8 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
                 : ExecuteCommandAsync(connection, executeAsync, sql, useTransaction, parameters);
 
         private static async Task<T> ExecuteCommandAsync<T>(
-            DbConnection connection, Func<DbCommand, Task<T>> executeAsync, string sql, bool useTransaction, IReadOnlyList<object> parameters)
+            DbConnection connection, Func<DbCommand, Task<T>> executeAsync, string sql, bool useTransaction,
+            IReadOnlyList<object> parameters)
         {
             if (connection.State != ConnectionState.Closed)
             {

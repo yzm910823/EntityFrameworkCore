@@ -6,6 +6,8 @@ using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
 {
     /// <summary>
@@ -32,7 +34,7 @@ namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
         ///     Hints that can be used by the <see cref="ITypeMappingSource" /> to create data types with appropriate
         ///     facets for the converted data.
         /// </param>
-        public NumberToBytesConverter([CanBeNull] ConverterMappingHints mappingHints = null)
+        public NumberToBytesConverter([CanBeNull] ConverterMappingHints? mappingHints = null)
             : base(ToBytes(), ToNumber(), _defaultHints.With(mappingHints))
         {
         }
@@ -122,7 +124,9 @@ namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
             return Expression.Lambda<Func<byte[], TNumber>>(
                 Expression.Condition(
                     Expression.ReferenceEqual(param, Expression.Constant(null)),
+#nullable disable // https://github.com/dotnet/roslyn/issues/30953
                     Expression.Constant(default(TNumber), typeof(TNumber)),
+#nullable enable
                     output),
                 param);
         }
@@ -163,16 +167,13 @@ namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
                 BindingFlags.Static | BindingFlags.NonPublic);
 
         private static byte[] ReverseLong(byte[] bytes)
-            => new[]
-                { bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0] };
+            => new[] { bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0] };
 
         private static byte[] ReverseInt(byte[] bytes)
-            => new[]
-                { bytes[3], bytes[2], bytes[1], bytes[0] };
+            => new[] { bytes[3], bytes[2], bytes[1], bytes[0] };
 
         private static byte[] ReverseShort(byte[] bytes)
-            => new[]
-                { bytes[1], bytes[0] };
+            => new[] { bytes[1], bytes[0] };
 
         private static int GetByteCount()
         {

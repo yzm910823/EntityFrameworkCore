@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using JetBrains.Annotations;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Query.Sql
 {
@@ -23,6 +23,12 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
     ///         dependency injection container. To create an instance with some dependent services replaced,
     ///         first resolve the object from the dependency injection container, then replace selected
     ///         services using the 'With...' methods. Do not call the constructor at any point in this process.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>.
+    ///         This means a single instance of each service is used by many <see cref="DbContext"/> instances.
+    ///         The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
     ///     </para>
     /// </summary>
     public sealed class QuerySqlGeneratorDependencies
@@ -44,25 +50,21 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
         /// <param name="sqlGenerationHelper"> The SQL generation helper. </param>
         /// <param name="parameterNameGeneratorFactory"> The parameter name generator factory. </param>
         /// <param name="typeMappingSource"> The type mapper. </param>
-        /// <param name="logger"> The logger. </param>
         public QuerySqlGeneratorDependencies(
             [NotNull] IRelationalCommandBuilderFactory commandBuilderFactory,
             [NotNull] ISqlGenerationHelper sqlGenerationHelper,
             [NotNull] IParameterNameGeneratorFactory parameterNameGeneratorFactory,
-            [NotNull] IRelationalTypeMappingSource typeMappingSource,
-            [NotNull] IDiagnosticsLogger<DbLoggerCategory.Query> logger)
+            [NotNull] IRelationalTypeMappingSource typeMappingSource)
         {
             Check.NotNull(commandBuilderFactory, nameof(commandBuilderFactory));
             Check.NotNull(sqlGenerationHelper, nameof(sqlGenerationHelper));
             Check.NotNull(parameterNameGeneratorFactory, nameof(parameterNameGeneratorFactory));
             Check.NotNull(typeMappingSource, nameof(typeMappingSource));
-            Check.NotNull(logger, nameof(logger));
 
             CommandBuilderFactory = commandBuilderFactory;
             SqlGenerationHelper = sqlGenerationHelper;
             ParameterNameGeneratorFactory = parameterNameGeneratorFactory;
             TypeMappingSource = typeMappingSource;
-            Logger = logger;
         }
 
         /// <summary>
@@ -86,11 +88,6 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
         public IRelationalTypeMappingSource TypeMappingSource { get; }
 
         /// <summary>
-        ///     The logger.
-        /// </summary>
-        public IDiagnosticsLogger<DbLoggerCategory.Query> Logger { get; }
-
-        /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
         /// </summary>
         /// <param name="commandBuilderFactory"> A replacement for the current dependency of this type. </param>
@@ -100,8 +97,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
                 commandBuilderFactory,
                 SqlGenerationHelper,
                 ParameterNameGeneratorFactory,
-                TypeMappingSource,
-                Logger);
+                TypeMappingSource);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -113,8 +109,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
                 CommandBuilderFactory,
                 sqlGenerationHelper,
                 ParameterNameGeneratorFactory,
-                TypeMappingSource,
-                Logger);
+                TypeMappingSource);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -126,8 +121,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
                 CommandBuilderFactory,
                 SqlGenerationHelper,
                 parameterNameGeneratorFactory,
-                TypeMappingSource,
-                Logger);
+                TypeMappingSource);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -139,20 +133,6 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
                 CommandBuilderFactory,
                 SqlGenerationHelper,
                 ParameterNameGeneratorFactory,
-                typeMappingSource,
-                Logger);
-
-        /// <summary>
-        ///     Clones this dependency parameter object with one service replaced.
-        /// </summary>
-        /// <param name="logger"> A replacement for the current dependency of this type. </param>
-        /// <returns> A new parameter object with the given service replaced. </returns>
-        public QuerySqlGeneratorDependencies With([NotNull] IDiagnosticsLogger<DbLoggerCategory.Query> logger)
-            => new QuerySqlGeneratorDependencies(
-                CommandBuilderFactory,
-                SqlGenerationHelper,
-                ParameterNameGeneratorFactory,
-                TypeMappingSource,
-                logger);
+                typeMappingSource);
     }
 }

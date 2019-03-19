@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -32,11 +33,13 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         {
             var modelBuilder = new InternalModelBuilder(new Model());
             var entityTypeBuilder = modelBuilder.Entity(typeof(NonPrimitiveNonNavigationAsPropertyEntity), ConfigurationSource.Convention);
-            entityTypeBuilder.Property("LongProperty", typeof(Tuple<long>), ConfigurationSource.Explicit).Relational(ConfigurationSource.Convention).HasColumnType("some_int_mapping");
+            entityTypeBuilder.Property("LongProperty", typeof(Tuple<long>), ConfigurationSource.Explicit)
+                .Relational(ConfigurationSource.Convention).HasColumnType("some_int_mapping");
 
             Assert.Equal(
                 CoreStrings.PropertyNotMapped(
-                    typeof(NonPrimitiveNonNavigationAsPropertyEntity).ShortDisplayName(), "LongProperty", typeof(Tuple<long>).ShortDisplayName()),
+                    typeof(NonPrimitiveNonNavigationAsPropertyEntity).ShortDisplayName(), "LongProperty",
+                    typeof(Tuple<long>).ShortDisplayName()),
                 Assert.Throws<InvalidOperationException>(() => CreateConvention().Apply(modelBuilder)).Message);
         }
 
@@ -49,7 +52,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             return new PropertyMappingValidationConvention(
                 typeMappingSource,
                 TestServiceFactory.Instance.Create<IMemberClassifier>(
-                    (typeof(ITypeMappingSource), typeMappingSource)));
+                    (typeof(ITypeMappingSource), typeMappingSource)),
+                new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>());
         }
     }
 }

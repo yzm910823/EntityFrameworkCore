@@ -1,13 +1,16 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Collections;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Update;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
@@ -15,10 +18,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
     public class DocumentSource
     {
         private readonly string _collectionId;
-        private readonly CosmosDatabase _database;
+        private readonly CosmosDatabaseWrapper _database;
         private readonly IProperty _idProperty;
 
-        public DocumentSource(IEntityType entityType, CosmosDatabase database)
+        public DocumentSource(IEntityType entityType, CosmosDatabaseWrapper database)
         {
             _collectionId = entityType.Cosmos().ContainerName;
             _database = database;
@@ -37,10 +40,9 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
             foreach (var property in entry.EntityType.GetProperties())
             {
                 var storeName = property.Cosmos().PropertyName;
-                if (storeName != "")
+                if (storeName.Length != 0)
                 {
-                    var value = entry.GetCurrentValue(property);
-                    document[storeName] = value != null ? JToken.FromObject(value) : null;
+                    document[storeName] = ConvertPropertyValue(property, entry.GetCurrentValue(property));
                 }
             }
 
@@ -55,14 +57,15 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
                 }
 
                 var nestedValue = entry.GetCurrentValue(ownedNavigation);
+                var nestedPropertyName = fk.DeclaringEntityType.Cosmos().ContainingPropertyName;
                 if (nestedValue == null)
                 {
-                    document[ownedNavigation.Name] = null;
+                    document[nestedPropertyName] = null;
                 }
                 else if (fk.IsUnique)
                 {
                     var dependentEntry = ((InternalEntityEntry)entry).StateManager.TryGetEntry(nestedValue, fk.DeclaringEntityType);
-                    document[ownedNavigation.Name] = _database.GetDocumentSource(dependentEntry.EntityType).CreateDocument(dependentEntry);
+                    document[nestedPropertyName] = _database.GetDocumentSource(dependentEntry.EntityType).CreateDocument(dependentEntry);
                 }
                 else
                 {
@@ -73,7 +76,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
                         array.Add(_database.GetDocumentSource(dependentEntry.EntityType).CreateDocument(dependentEntry));
                     }
 
-                    document[ownedNavigation.Name] = array;
+                    document[nestedPropertyName] = array;
                 }
             }
 
@@ -89,10 +92,9 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
                     || entry.IsModified(property))
                 {
                     var storeName = property.Cosmos().PropertyName;
-                    if (storeName != "")
+                    if (storeName.Length != 0)
                     {
-                        var value = entry.GetCurrentValue(property);
-                        document[storeName] = value != null ? JToken.FromObject(value) : null;
+                        document[storeName] = ConvertPropertyValue(property, entry.GetCurrentValue(property));
                         anyPropertyUpdated = true;
                     }
                 }
@@ -110,11 +112,12 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
 
                 var nestedDocumentSource = _database.GetDocumentSource(fk.DeclaringEntityType);
                 var nestedValue = entry.GetCurrentValue(ownedNavigation);
+                var nestedPropertyName = fk.DeclaringEntityType.Cosmos().ContainingPropertyName;
                 if (nestedValue == null)
                 {
-                    if (document[ownedNavigation.Name] != null)
+                    if (document[nestedPropertyName] != null)
                     {
-                        document[ownedNavigation.Name] = null;
+                        document[nestedPropertyName] = null;
                         anyPropertyUpdated = true;
                     }
                 }
@@ -126,7 +129,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
                         return document;
                     }
 
-                    if (document[ownedNavigation.Name] is JObject nestedDocument)
+                    if (document[nestedPropertyName] is JObject nestedDocument)
                     {
                         nestedDocument = nestedDocumentSource.UpdateDocument(nestedDocument, nestedEntry);
                     }
@@ -137,7 +140,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
 
                     if (nestedDocument != null)
                     {
-                        document[ownedNavigation.Name] = nestedDocument;
+                        document[nestedPropertyName] = nestedDocument;
                         anyPropertyUpdated = true;
                     }
                 }
@@ -155,12 +158,28 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Update.Internal
                         array.Add(_database.GetDocumentSource(dependentEntry.EntityType).CreateDocument(dependentEntry));
                     }
 
-                    document[ownedNavigation.Name] = array;
+                    document[nestedPropertyName] = array;
                     anyPropertyUpdated = true;
                 }
             }
 
             return anyPropertyUpdated ? document : null;
+        }
+
+        private static JToken ConvertPropertyValue(IProperty property, object value)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+
+            var converter = property.FindMapping().Converter;
+            if (converter != null)
+            {
+                value = converter.ConvertToProvider(value);
+            }
+
+            return (value as JToken) ?? JToken.FromObject(value, CosmosClientWrapper.Serializer);
         }
     }
 }

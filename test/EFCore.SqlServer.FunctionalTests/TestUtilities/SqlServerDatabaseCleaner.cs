@@ -2,13 +2,15 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.EntityFrameworkCore.Scaffolding;
 using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Scaffolding.Internal;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.EntityFrameworkCore.TestUtilities
 {
@@ -19,7 +21,8 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
                 new DiagnosticsLogger<DbLoggerCategory.Scaffolding>(
                     loggerFactory,
                     new LoggingOptions(),
-                    new DiagnosticListener("Fake")));
+                    new DiagnosticListener("Fake"),
+                    new SqlServerLoggingDefinitions()));
 
         protected override bool AcceptIndex(DatabaseIndex index)
             => false;

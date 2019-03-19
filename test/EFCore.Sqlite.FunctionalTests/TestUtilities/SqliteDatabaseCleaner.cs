@@ -4,16 +4,16 @@
 using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.Sqlite.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Scaffolding;
 using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
+using Microsoft.EntityFrameworkCore.Sqlite.Design.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore.Sqlite.Design.Internal;
 
 namespace Microsoft.EntityFrameworkCore.TestUtilities
 {
@@ -28,6 +28,7 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
                 .AddSingleton<ValueConverterSelectorDependencies>()
                 .AddSingleton<DiagnosticSource>(new DiagnosticListener(DbLoggerCategory.Name))
                 .AddSingleton<ILoggingOptions, LoggingOptions>()
+                .AddSingleton<LoggingDefinitions, SqliteLoggingDefinitions>()
                 .AddSingleton(typeof(IDiagnosticsLogger<>), typeof(DiagnosticsLogger<>))
                 .AddSingleton<IValueConverterSelector, ValueConverterSelector>()
                 .AddLogging();
@@ -48,8 +49,7 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
         {
             connection.Open();
 
-            ((SqliteConnection)connection.DbConnection).EnableExtensions();
-            SpatialiteLoader.TryLoad(connection.DbConnection);
+            SpatialiteLoader.TryLoad((SqliteConnection)connection.DbConnection);
         }
     }
 }

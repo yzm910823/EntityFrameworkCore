@@ -1024,7 +1024,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         Assert.Equal(setToPrincipal || setFk ? principal.Id : 0, dependent.CategoryId);
                         Assert.Same(setToPrincipal ? principal : null, dependent.Category);
                         Assert.Equal(setToPrincipal || setToDependent ? new[] { dependent } : null, principal.Products);
-                        Assert.Equal(setToPrincipal ? EntityState.Added : EntityState.Detached, context.Entry(principal).State);
+                        Assert.Equal(setToPrincipal ? EntityState.Modified : EntityState.Detached, context.Entry(principal).State);
                         Assert.Equal(
                             entityState == EntityState.Unchanged && (setToPrincipal || setFk) ? EntityState.Modified : entityState,
                             context.Entry(dependent).State);
@@ -1130,7 +1130,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         Assert.Same(setToDependent || setToPrincipal ? principal : null, dependent.Category);
                         Assert.Equal(setToDependent ? new[] { dependent } : null, principal.Products);
                         Assert.Equal(entityState, context.Entry(principal).State);
-                        Assert.Equal(setToDependent ? EntityState.Added : EntityState.Detached, context.Entry(dependent).State);
+                        Assert.Equal(setToDependent ? EntityState.Modified : EntityState.Detached, context.Entry(dependent).State);
                     });
             }
         }
@@ -1264,7 +1264,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         Assert.Equal(principal.Id, dependent.CategoryId);
                         Assert.Equal(setToDependent ? new[] { dependent } : Array.Empty<ProductPN>(), principal.Products);
                         Assert.Equal(entityState, context.Entry(principal).State);
-                        Assert.Equal(setToDependent ? EntityState.Added : EntityState.Detached, context.Entry(dependent).State);
+                        Assert.Equal(setToDependent ? EntityState.Modified : EntityState.Detached, context.Entry(dependent).State);
                     });
             }
         }
@@ -1329,7 +1329,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         Assert.Equal(principal.Id, dependent.CategoryId);
                         Assert.Same(setToPrincipal ? principal : null, dependent.Category);
-                        Assert.Equal(setToPrincipal ? EntityState.Added : EntityState.Detached, context.Entry(principal).State);
+                        Assert.Equal(setToPrincipal ? EntityState.Modified : EntityState.Detached, context.Entry(principal).State);
                         Assert.Equal(
                             entityState == EntityState.Added ? EntityState.Added : EntityState.Modified,
                             context.Entry(dependent).State);
@@ -1432,7 +1432,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         Assert.Equal(principal.Id, dependent.CategoryId);
                         Assert.Equal(EntityState.Detached, context.Entry(principal).State);
-                        Assert.Equal(entityState == EntityState.Added ? EntityState.Added : EntityState.Modified, context.Entry(dependent).State);
+                        Assert.Equal(
+                            entityState == EntityState.Added ? EntityState.Added : EntityState.Modified, context.Entry(dependent).State);
                     });
             }
         }
@@ -1568,7 +1569,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         Assert.Equal(setToPrincipal || setFk ? principal.Id : 0, dependent.ParentId);
                         Assert.Same(setToPrincipal ? principal : null, dependent.Parent);
                         Assert.Same(setToPrincipal || setToDependent ? dependent : null, principal.Child);
-                        Assert.Equal(setToPrincipal ? EntityState.Added : EntityState.Detached, context.Entry(principal).State);
+                        Assert.Equal(setToPrincipal ? EntityState.Modified : EntityState.Detached, context.Entry(principal).State);
                         Assert.Equal(
                             entityState == EntityState.Unchanged && (setFk || setToPrincipal)
                                 ? EntityState.Modified
@@ -1683,7 +1684,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         Assert.Same(setToDependent || setToPrincipal ? principal : null, dependent.Parent);
                         Assert.Same(setToDependent ? dependent : null, principal.Child);
                         Assert.Equal(entityState, context.Entry(principal).State);
-                        Assert.Equal(setToDependent ? EntityState.Added : EntityState.Detached, context.Entry(dependent).State);
+                        Assert.Equal(setToDependent ? EntityState.Modified : EntityState.Detached, context.Entry(dependent).State);
                     });
             }
         }
@@ -1817,7 +1818,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         Assert.Equal(principal.Id, dependent.ParentId);
                         Assert.Same(setToDependent ? dependent : null, principal.Child);
                         Assert.Equal(entityState, context.Entry(principal).State);
-                        Assert.Equal(setToDependent ? EntityState.Added : EntityState.Detached, context.Entry(dependent).State);
+                        Assert.Equal(setToDependent ? EntityState.Modified : EntityState.Detached, context.Entry(dependent).State);
                     });
             }
         }
@@ -1882,8 +1883,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         Assert.Equal(principal.Id, dependent.ParentId);
                         Assert.Same(setToPrincipal ? principal : null, dependent.Parent);
-                        Assert.Equal(setToPrincipal ? EntityState.Added : EntityState.Detached, context.Entry(principal).State);
-                        Assert.Equal(entityState == EntityState.Added ? EntityState.Added : EntityState.Modified, context.Entry(dependent).State);
+                        Assert.Equal(setToPrincipal ? EntityState.Modified : EntityState.Detached, context.Entry(principal).State);
+                        Assert.Equal(
+                            entityState == EntityState.Added ? EntityState.Added : EntityState.Modified, context.Entry(dependent).State);
                     });
             }
         }
@@ -1983,7 +1985,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         Assert.Equal(principal.Id, dependent.ParentId);
                         Assert.Equal(EntityState.Detached, context.Entry(principal).State);
-                        Assert.Equal(entityState == EntityState.Added ? EntityState.Added : EntityState.Modified, context.Entry(dependent).State);
+                        Assert.Equal(
+                            entityState == EntityState.Added ? EntityState.Added : EntityState.Modified, context.Entry(dependent).State);
                     });
             }
         }
@@ -2124,6 +2127,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         {
             using (var context = new FixupContext())
             {
+                context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.OnSaveChanges;
+
                 var principal = new Parent(77);
                 var oldDependent = new Child(78, principal.Id);
                 oldDependent.SetParent(principal);
@@ -2204,7 +2209,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         [InlineData(EntityState.Modified, EntityState.Modified)]
         [InlineData(EntityState.Unchanged, EntityState.Added)]
         [InlineData(EntityState.Unchanged, EntityState.Modified)]
-        public void Replace_dependent_one_to_one_prin_uni_FK_not_set_principal_nav_set(EntityState oldEntityState, EntityState newEntityState)
+        public void Replace_dependent_one_to_one_prin_uni_FK_not_set_principal_nav_set(
+            EntityState oldEntityState, EntityState newEntityState)
         {
             Replace_dependent_one_to_one_prin_uni(oldEntityState, newEntityState, setFk: false, setToDependent: true, detectChanges: true);
         }
@@ -2214,6 +2220,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         {
             using (var context = new FixupContext())
             {
+                context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.OnSaveChanges;
+
                 var principal = new ParentPN
                 {
                     Id = 77
@@ -2297,7 +2305,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         [InlineData(EntityState.Modified, EntityState.Modified)]
         [InlineData(EntityState.Unchanged, EntityState.Added)]
         [InlineData(EntityState.Unchanged, EntityState.Modified)]
-        public void Replace_dependent_one_to_one_dep_uni_FK_not_set_dependent_nav_set(EntityState oldEntityState, EntityState newEntityState)
+        public void Replace_dependent_one_to_one_dep_uni_FK_not_set_dependent_nav_set(
+            EntityState oldEntityState, EntityState newEntityState)
         {
             Replace_dependent_one_to_one_dep_uni(oldEntityState, newEntityState, setFk: false, setToPrincipal: true);
         }
@@ -2307,6 +2316,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         {
             using (var context = new FixupContext())
             {
+                context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.OnSaveChanges;
+
                 var principal = new ParentDN
                 {
                     Id = 77
@@ -2364,6 +2375,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         {
             using (var context = new FixupContext())
             {
+                context.ChangeTracker.DeleteOrphansTiming = CascadeTiming.OnSaveChanges;
+
                 var principal = new ParentNN
                 {
                     Id = 77
@@ -2783,9 +2796,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         private class Category
         {
             // ReSharper disable once FieldCanBeMadeReadOnly.Local
-#pragma warning disable IDE0044 // Add readonly modifier
-            private int _id;
-#pragma warning restore IDE0044 // Add readonly modifier
+            private readonly int _id;
             private ICollection<Product> _products;
 
             // ReSharper disable once UnusedMember.Local
@@ -2811,9 +2822,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         private class Product
         {
             // ReSharper disable once FieldCanBeMadeReadOnly.Local
-#pragma warning disable IDE0044 // Add readonly modifier
-            private int _id;
-#pragma warning restore IDE0044 // Add readonly modifier
+            private readonly int _id;
             private int _categoryId;
             private Category _category;
             private ICollection<SpecialOffer> _specialOffers;
@@ -2852,9 +2861,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         private class SpecialOffer
         {
             // ReSharper disable once FieldCanBeMadeReadOnly.Local
-#pragma warning disable IDE0044 // Add readonly modifier
-            private int _id;
-#pragma warning restore IDE0044 // Add readonly modifier
+            private readonly int _id;
             private int _productId;
             private Product _product;
 
@@ -2965,7 +2972,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(nameof(FixupContext));
+                => optionsBuilder
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(nameof(FixupContext));
         }
 
         private void AssertFixup(DbContext context, Action asserts)
@@ -3037,7 +3046,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             public DbSet<TestClass> Classes { get; set; }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder options)
-                => options.UseInMemoryDatabase(nameof(FixupContext));
+                => options
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(nameof(FixupContext));
 
             protected internal override void OnModelCreating(ModelBuilder modelBuilder)
             {

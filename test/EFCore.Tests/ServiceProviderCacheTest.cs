@@ -30,7 +30,7 @@ namespace Microsoft.EntityFrameworkCore
             Assert.Equal(1, loggerFactory.Log.Count);
 
             Assert.Equal(
-                CoreStrings.LogServiceProviderCreated.GenerateMessage(),
+                CoreStrings.LogServiceProviderCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage(),
                 loggerFactory.Log[0].Message);
         }
 
@@ -52,11 +52,11 @@ namespace Microsoft.EntityFrameworkCore
             Assert.Equal(2, loggerFactory.Log.Count);
 
             Assert.Equal(
-                CoreStrings.LogServiceProviderCreated.GenerateMessage(),
+                CoreStrings.LogServiceProviderCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage(),
                 loggerFactory.Log[0].Message);
 
             Assert.Equal(
-                CoreStrings.LogServiceProviderDebugInfo.GenerateMessage(
+                CoreStrings.LogServiceProviderDebugInfo(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                     string.Join(
                         ", ",
                         CoreStrings.ServiceProviderConfigRemoved("Fake1"),
@@ -86,7 +86,7 @@ namespace Microsoft.EntityFrameworkCore
             Assert.Equal(1, loggerFactory.Log.Count);
 
             Assert.Equal(
-                CoreStrings.LogServiceProviderCreated.GenerateMessage(),
+                CoreStrings.LogServiceProviderCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage(),
                 loggerFactory.Log[0].Message);
         }
 
@@ -115,17 +115,17 @@ namespace Microsoft.EntityFrameworkCore
             Assert.Equal(2, loggerFactory.Log.Count);
 
             Assert.Equal(
-                CoreStrings.LogServiceProviderCreated.GenerateMessage(),
+                CoreStrings.LogServiceProviderCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage(),
                 loggerFactory.Log[0].Message);
 
             Assert.Equal(
-                CoreStrings.LogServiceProviderDebugInfo.GenerateMessage(
+                CoreStrings.LogServiceProviderDebugInfo(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                     CoreStrings.ServiceProviderConfigChanged("Core:ReplaceService:" + typeof(object).DisplayName())),
                 loggerFactory.Log[1].Message);
         }
 
         [Fact]
-        public void Reports_debug_info_for_different_ILoggerFactory_instances()
+        public void Different_ILoggerFactory_instances_does_not_trigger_new_internal_provider()
         {
             var config1 = CreateOptions<CoreOptionsExtension>(new ListLoggerFactory());
 
@@ -138,14 +138,7 @@ namespace Microsoft.EntityFrameworkCore
             var first = cache.GetOrAdd(config1, true);
             var second = cache.GetOrAdd(config2, true);
 
-            Assert.NotSame(first, second);
-
-            Assert.Equal(1, loggerFactory.Log.Count);
-
-            Assert.Equal(
-                CoreStrings.LogServiceProviderDebugInfo.GenerateMessage(
-                    CoreStrings.ServiceProviderConfigChanged("Core:UseLoggerFactory")),
-                loggerFactory.Log[0].Message);
+            Assert.Same(first, second);
         }
 
         [Fact]
@@ -195,21 +188,21 @@ namespace Microsoft.EntityFrameworkCore
                 Assert.Equal(4, loggerFactory.Log.Count);
 
                 Assert.Equal(
-                    CoreStrings.LogServiceProviderCreated.GenerateMessage(),
+                    CoreStrings.LogServiceProviderCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage(),
                     loggerFactory.Log[0].Message);
 
                 Assert.Equal(
-                    CoreStrings.LogServiceProviderDebugInfo.GenerateMessage(
+                    CoreStrings.LogServiceProviderDebugInfo(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                         CoreStrings.ServiceProviderConfigChanged("Core:ConfigureWarnings")),
                     loggerFactory.Log[1].Message);
 
                 Assert.Equal(
-                    CoreStrings.LogServiceProviderDebugInfo.GenerateMessage(
+                    CoreStrings.LogServiceProviderDebugInfo(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                         CoreStrings.ServiceProviderConfigChanged("Core:EnableSensitiveDataLogging")),
                     loggerFactory.Log[2].Message);
 
                 Assert.Equal(
-                    CoreStrings.LogServiceProviderDebugInfo.GenerateMessage(
+                    CoreStrings.LogServiceProviderDebugInfo(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                         string.Join(
                             ", ",
                             CoreStrings.ServiceProviderConfigChanged("Core:EnableDetailedErrors"),

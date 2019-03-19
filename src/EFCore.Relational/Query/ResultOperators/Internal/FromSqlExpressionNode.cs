@@ -20,8 +20,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public static readonly IReadOnlyCollection<MethodInfo> SupportedMethods = new[]
-            { RelationalQueryableExtensions.FromSqlMethodInfo };
+        public static readonly IReadOnlyCollection<MethodInfo> SupportedMethods = new[] { RelationalQueryableExtensions.FromSqlMethodInfo };
 
         private readonly string _sql;
         private readonly Expression _arguments;
@@ -36,7 +35,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
             [NotNull] Expression arguments)
             : base(parseInfo, null, null)
         {
-            _sql = ((RawSqlString)sql.Value).Format;
+            _sql = (string)sql.Value;
             _arguments = arguments;
         }
 

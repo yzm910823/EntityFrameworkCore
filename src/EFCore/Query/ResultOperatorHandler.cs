@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Extensions.Internal;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using Remotion.Linq.Clauses.ResultOperators;
@@ -22,7 +23,15 @@ namespace Microsoft.EntityFrameworkCore.Query
     using ResultHandler = Func<EntityQueryModelVisitor, ResultOperatorBase, QueryModel, Expression>;
 
     /// <summary>
-    ///     The default client-eval result operator handler.
+    ///     <para>
+    ///         The default client-eval result operator handler.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class ResultOperatorHandler : IResultOperatorHandler
     {
@@ -130,9 +139,9 @@ namespace Microsoft.EntityFrameworkCore.Query
                 .IsAssignableFrom(resultItemTypeInfo)
                 ? entityQueryModelVisitor.Expression
                 : Expression.Call(
-                entityQueryModelVisitor.LinqOperatorProvider
-                    .Cast.MakeGenericMethod(castResultOperator.CastItemType),
-                entityQueryModelVisitor.Expression);
+                    entityQueryModelVisitor.LinqOperatorProvider
+                        .Cast.MakeGenericMethod(castResultOperator.CastItemType),
+                    entityQueryModelVisitor.Expression);
         }
 
         private static Expression HandleConcat(
@@ -371,9 +380,9 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
             if (entityQueryModelVisitor.Expression is MethodCallExpression methodCallExpression
                 && (methodCallExpression.Method
-                    .MethodIsClosedFormOf(entityQueryModelVisitor.LinqOperatorProvider.Select)
+                        .MethodIsClosedFormOf(entityQueryModelVisitor.LinqOperatorProvider.Select)
                     || methodCallExpression.Method
-                    .MethodIsClosedFormOf(AsyncLinqOperatorProvider.SelectAsyncMethod)))
+                        .MethodIsClosedFormOf(AsyncLinqOperatorProvider.SelectAsyncMethod)))
             {
                 // Push Last down below Select
 
@@ -443,9 +452,9 @@ namespace Microsoft.EntityFrameworkCore.Query
 
             if (entityQueryModelVisitor.Expression is MethodCallExpression methodCallExpression
                 && (methodCallExpression.Method
-                    .MethodIsClosedFormOf(entityQueryModelVisitor.LinqOperatorProvider.Select)
+                        .MethodIsClosedFormOf(entityQueryModelVisitor.LinqOperatorProvider.Select)
                     || methodCallExpression.Method
-                    .MethodIsClosedFormOf(AsyncLinqOperatorProvider.SelectAsyncMethod)))
+                        .MethodIsClosedFormOf(AsyncLinqOperatorProvider.SelectAsyncMethod)))
             {
                 // Push Skip down below Select
 
@@ -482,9 +491,9 @@ namespace Microsoft.EntityFrameworkCore.Query
 
             if (entityQueryModelVisitor.Expression is MethodCallExpression methodCallExpression
                 && (methodCallExpression.Method
-                    .MethodIsClosedFormOf(entityQueryModelVisitor.LinqOperatorProvider.Select)
+                        .MethodIsClosedFormOf(entityQueryModelVisitor.LinqOperatorProvider.Select)
                     || methodCallExpression.Method
-                    .MethodIsClosedFormOf(AsyncLinqOperatorProvider.SelectAsyncMethod)))
+                        .MethodIsClosedFormOf(AsyncLinqOperatorProvider.SelectAsyncMethod)))
             {
                 // Push Take down below Select
 

@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Utilities;
 
@@ -18,6 +20,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     public abstract class TypeBase : ConventionalAnnotatable, IMutableTypeBase
     {
         private ConfigurationSource _configurationSource;
+
         private readonly Dictionary<string, ConfigurationSource> _ignoredMembers
             = new Dictionary<string, ConfigurationSource>(StringComparer.Ordinal);
 
@@ -98,7 +101,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Dictionary<string, PropertyInfo> GetRuntimeProperties()
+        public virtual IReadOnlyDictionary<string, PropertyInfo> GetRuntimeProperties()
         {
             if (ClrType == null)
             {
@@ -107,15 +110,17 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             if (_runtimeProperties == null)
             {
-                _runtimeProperties = new Dictionary<string, PropertyInfo>(StringComparer.Ordinal);
+                var runtimeProperties = new Dictionary<string, PropertyInfo>(StringComparer.Ordinal);
                 foreach (var property in ClrType.GetRuntimeProperties())
                 {
                     if (!property.IsStatic()
-                        && !_runtimeProperties.ContainsKey(property.Name))
+                        && !runtimeProperties.ContainsKey(property.Name))
                     {
-                        _runtimeProperties[property.Name] = property;
+                        runtimeProperties[property.Name] = property;
                     }
                 }
+
+                Interlocked.CompareExchange(ref _runtimeProperties, runtimeProperties, null);
             }
 
             return _runtimeProperties;
@@ -125,7 +130,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Dictionary<string, FieldInfo> GetRuntimeFields()
+        public virtual IReadOnlyDictionary<string, FieldInfo> GetRuntimeFields()
         {
             if (ClrType == null)
             {
@@ -134,15 +139,17 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             if (_runtimeFields == null)
             {
-                _runtimeFields = new Dictionary<string, FieldInfo>(StringComparer.Ordinal);
+                var runtimeFields = new Dictionary<string, FieldInfo>(StringComparer.Ordinal);
                 foreach (var field in ClrType.GetRuntimeFields())
                 {
                     if (!field.IsStatic
-                        && !_runtimeFields.ContainsKey(field.Name))
+                        && !runtimeFields.ContainsKey(field.Name))
                     {
-                        _runtimeFields[field.Name] = field;
+                        runtimeFields[field.Name] = field;
                     }
                 }
+
+                Interlocked.CompareExchange(ref _runtimeFields, runtimeFields, null);
             }
 
             return _runtimeFields;
@@ -156,6 +163,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         {
             _runtimeProperties = null;
             _runtimeFields = null;
+            Thread.MemoryBarrier();
         }
 
         /// <summary>

@@ -5,6 +5,7 @@ using System;
 using System.Data.Common;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.TestUtilities
 {
@@ -16,16 +17,16 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
             => new SqliteTestStore(name, sharedCache: sharedCache);
 
         public static SqliteTestStore GetOrCreateInitialized(string name)
-            => new SqliteTestStore(name).InitializeSqlite(null, (Func<DbContext>)null, null);
+            => new SqliteTestStore(name).InitializeSqlite(
+                new ServiceCollection().AddEntityFrameworkSqlite().BuildServiceProvider(),
+                (Func<DbContext>)null,
+                null);
 
         public static SqliteTestStore GetExisting(string name)
             => new SqliteTestStore(name, seed: false);
 
         public static SqliteTestStore Create(string name, bool sharedCache = true)
             => new SqliteTestStore(name, sharedCache: sharedCache, shared: false);
-
-        public static SqliteTestStore CreateInitialized(string name)
-            => new SqliteTestStore(name, shared: false).InitializeSqlite(null, (Func<DbContext>)null, null);
 
         private readonly bool _seed;
 
@@ -40,7 +41,9 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
                 Cache = sharedCache ? SqliteCacheMode.Shared : SqliteCacheMode.Private
             }.ToString();
 
-            Connection = new SqliteConnection(ConnectionString);
+            var connection = new SqliteConnection(ConnectionString);
+            SpatialiteLoader.TryLoad(connection);
+            Connection = connection;
         }
 
         public override DbContextOptionsBuilder AddProviderOptions(DbContextOptionsBuilder builder)
@@ -49,7 +52,8 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
         public SqliteTestStore InitializeSqlite(IServiceProvider serviceProvider, Func<DbContext> createContext, Action<DbContext> seed)
             => (SqliteTestStore)Initialize(serviceProvider, createContext, seed);
 
-        public SqliteTestStore InitializeSqlite(IServiceProvider serviceProvider, Func<SqliteTestStore, DbContext> createContext, Action<DbContext> seed)
+        public SqliteTestStore InitializeSqlite(
+            IServiceProvider serviceProvider, Func<SqliteTestStore, DbContext> createContext, Action<DbContext> seed)
             => (SqliteTestStore)Initialize(serviceProvider, () => createContext(this), seed);
 
         protected override void Initialize(Func<DbContext> createContext, Action<DbContext> seed)
@@ -72,20 +76,6 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
 
         public override void Clean(DbContext context)
             => context.Database.EnsureClean();
-
-        public override void OpenConnection()
-        {
-            Connection.Open();
-
-            ((SqliteConnection)Connection).EnableExtensions();
-            SpatialiteLoader.TryLoad(Connection);
-
-            using (var command = Connection.CreateCommand())
-            {
-                command.CommandText = "PRAGMA foreign_keys=ON;";
-                command.ExecuteNonQuery();
-            }
-        }
 
         public int ExecuteNonQuery(string sql, params object[] parameters)
         {

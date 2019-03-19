@@ -16,11 +16,20 @@ using Microsoft.EntityFrameworkCore.Sqlite.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations
 {
     /// <summary>
-    ///     SQLite-specific implementation of <see cref="MigrationsSqlGenerator" />.
+    ///     <para>
+    ///         SQLite-specific implementation of <see cref="MigrationsSqlGenerator" />.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class SqliteMigrationsSqlGenerator : MigrationsSqlGenerator
     {
@@ -50,16 +59,16 @@ namespace Microsoft.EntityFrameworkCore.Migrations
         private bool IsSpatialiteColumn(AddColumnOperation operation, IModel model)
             => SqliteTypeMappingSource.IsSpatialiteType(
                 operation.ColumnType
-                    ?? GetColumnType(
-                        operation.Schema,
-                        operation.Table,
-                        operation.Name,
-                        operation.ClrType,
-                        operation.IsUnicode,
-                        operation.MaxLength,
-                        operation.IsFixedLength,
-                        operation.IsRowVersion,
-                        model));
+                ?? GetColumnType(
+                    operation.Schema,
+                    operation.Table,
+                    operation.Name,
+                    operation.ClrType,
+                    operation.IsUnicode,
+                    operation.MaxLength,
+                    operation.IsFixedLength,
+                    operation.IsRowVersion,
+                    model));
 
         private IReadOnlyList<MigrationOperation> RewriteOperations(
             IReadOnlyList<MigrationOperation> migrationOperations,
@@ -154,16 +163,16 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             var dimension = operation[SqliteAnnotationNames.Dimension] as string;
 
             var geometryType = operation.ColumnType
-                ?? GetColumnType(
-                    operation.Schema,
-                    operation.Table,
-                    operation.Name,
-                    operation.ClrType,
-                    operation.IsUnicode,
-                    operation.MaxLength,
-                    operation.IsFixedLength,
-                    operation.IsRowVersion,
-                    model);
+                               ?? GetColumnType(
+                                   operation.Schema,
+                                   operation.Table,
+                                   operation.Name,
+                                   operation.ClrType,
+                                   operation.IsUnicode,
+                                   operation.MaxLength,
+                                   operation.IsFixedLength,
+                                   operation.IsRowVersion,
+                                   model);
             if (!string.IsNullOrEmpty(dimension))
             {
                 geometryType += dimension;

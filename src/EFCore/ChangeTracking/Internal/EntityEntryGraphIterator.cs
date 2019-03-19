@@ -8,12 +8,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class EntityEntryGraphIterator : IEntityEntryGraphIterator
     {
@@ -22,11 +30,10 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual void TraverseGraph<TState>(
-            EntityEntryGraphNode node,
-            TState state,
-            Func<EntityEntryGraphNode, TState, bool> handleNode)
+            EntityEntryGraphNode<TState> node,
+            Func<EntityEntryGraphNode<TState>, bool> handleNode)
         {
-            if (!handleNode(node, state))
+            if (!handleNode(node))
             {
                 return;
             }
@@ -46,23 +53,17 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         foreach (var relatedEntity in ((IEnumerable)navigationValue).Cast<object>().ToList())
                         {
-                            var targetEntry = targetEntityType.HasDefiningNavigation()
-                                ? stateManager.GetOrCreateEntry(relatedEntity, targetEntityType)
-                                : stateManager.GetOrCreateEntry(relatedEntity);
+                            var targetEntry = stateManager.GetOrCreateEntry(relatedEntity, targetEntityType);
                             TraverseGraph(
-                                node.CreateNode(node, targetEntry, navigation),
-                                state,
+                                (EntityEntryGraphNode<TState>)node.CreateNode(node, targetEntry, navigation),
                                 handleNode);
                         }
                     }
                     else
                     {
-                        var targetEntry = targetEntityType.HasDefiningNavigation()
-                            ? stateManager.GetOrCreateEntry(navigationValue, targetEntityType)
-                            : stateManager.GetOrCreateEntry(navigationValue);
+                        var targetEntry = stateManager.GetOrCreateEntry(navigationValue, targetEntityType);
                         TraverseGraph(
-                            node.CreateNode(node, targetEntry, navigation),
-                            state,
+                            (EntityEntryGraphNode<TState>)node.CreateNode(node, targetEntry, navigation),
                             handleNode);
                     }
                 }
@@ -74,12 +75,11 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual async Task TraverseGraphAsync<TState>(
-            EntityEntryGraphNode node,
-            TState state,
-            Func<EntityEntryGraphNode, TState, CancellationToken, Task<bool>> handleNode,
+            EntityEntryGraphNode<TState> node,
+            Func<EntityEntryGraphNode<TState>, CancellationToken, Task<bool>> handleNode,
             CancellationToken cancellationToken = default)
         {
-            if (!await handleNode(node, state, cancellationToken))
+            if (!await handleNode(node, cancellationToken))
             {
                 return;
             }
@@ -99,24 +99,18 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         foreach (var relatedEntity in ((IEnumerable)navigationValue).Cast<object>().ToList())
                         {
-                            var targetEntry = targetType.HasDefiningNavigation()
-                                ? stateManager.GetOrCreateEntry(relatedEntity, targetType)
-                                : stateManager.GetOrCreateEntry(relatedEntity);
+                            var targetEntry = stateManager.GetOrCreateEntry(relatedEntity, targetType);
                             await TraverseGraphAsync(
-                                node.CreateNode(node, targetEntry, navigation),
-                                state,
+                                (EntityEntryGraphNode<TState>)node.CreateNode(node, targetEntry, navigation),
                                 handleNode,
                                 cancellationToken);
                         }
                     }
                     else
                     {
-                        var targetEntry = targetType.HasDefiningNavigation()
-                            ? stateManager.GetOrCreateEntry(navigationValue, targetType)
-                            : stateManager.GetOrCreateEntry(navigationValue);
+                        var targetEntry = stateManager.GetOrCreateEntry(navigationValue, targetType);
                         await TraverseGraphAsync(
-                            node.CreateNode(node, targetEntry, navigation),
-                            state,
+                            (EntityEntryGraphNode<TState>)node.CreateNode(node, targetEntry, navigation),
                             handleNode,
                             cancellationToken);
                     }

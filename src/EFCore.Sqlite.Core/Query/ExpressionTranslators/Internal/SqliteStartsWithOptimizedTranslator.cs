@@ -3,6 +3,7 @@
 
 using System.Linq.Expressions;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.ExpressionTranslators;
 
@@ -24,7 +25,9 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Expression Translate(MethodCallExpression methodCallExpression)
+        public virtual Expression Translate(
+            MethodCallExpression methodCallExpression,
+            IDiagnosticsLogger<DbLoggerCategory.Query> logger)
         {
             if (Equals(methodCallExpression.Method, _methodInfo))
             {
@@ -43,12 +46,7 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
                                 "substr",
                                 // ReSharper disable once PossibleNullReferenceException
                                 methodCallExpression.Object.Type,
-                                new[]
-                                {
-                                    methodCallExpression.Object,
-                                    Expression.Constant(1),
-                                    new SqlFunctionExpression("length", typeof(int), new[] { patternExpression })
-                                }),
+                                new[] { methodCallExpression.Object, Expression.Constant(1), new SqlFunctionExpression("length", typeof(int), new[] { patternExpression }) }),
                             patternExpression)));
 
                 return patternExpression is ConstantExpression patternConstantExpression

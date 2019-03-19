@@ -29,16 +29,21 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         IForeignKeyOwnershipChangedConvention
     {
         private const string KeySuffix = "Id";
-        private readonly IDiagnosticsLogger<DbLoggerCategory.Model> _logger;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public KeyDiscoveryConvention([CanBeNull] IDiagnosticsLogger<DbLoggerCategory.Model> logger)
+        public KeyDiscoveryConvention([NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> logger)
         {
-            _logger = logger;
+            Logger = logger;
         }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        protected virtual IDiagnosticsLogger<DbLoggerCategory.Model> Logger { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -50,7 +55,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             var entityType = entityTypeBuilder.Metadata;
             if (entityType.BaseType != null
-                || entityType.IsQueryType
+                || entityType.IsKeyless
                 || !ConfigurationSource.Convention.Overrides(entityType.GetPrimaryKeyConfigurationSource()))
             {
                 return entityTypeBuilder;
@@ -58,10 +63,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             List<Property> keyProperties = null;
             var definingFk = entityType.FindDefiningNavigation()?.ForeignKey
-                             ?? entityType.FindOwnership();
+                ?? entityType.FindOwnership();
+            if (definingFk != null
+                && definingFk.DeclaringEntityType != entityType)
+            {
+                definingFk = null;
+            }
 
-            if (definingFk?.IsUnique == true
-                && definingFk.DeclaringEntityType == entityType)
+            if (definingFk?.IsUnique == true)
             {
                 keyProperties = definingFk.Properties.ToList();
             }
@@ -74,13 +83,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                 keyProperties = (List<Property>)DiscoverKeyProperties(entityType, candidateProperties);
                 if (keyProperties.Count > 1)
                 {
-                    _logger?.MultiplePrimaryKeyCandidates(keyProperties[0], keyProperties[1]);
+                    Logger?.MultiplePrimaryKeyCandidates(keyProperties[0], keyProperties[1]);
                     return entityTypeBuilder;
                 }
             }
 
-            if (definingFk?.IsUnique == false
-                && definingFk.DeclaringEntityType == entityType)
+            if (definingFk?.IsUnique == false)
             {
                 if (keyProperties.Count == 0
                     || definingFk.Properties.Contains(keyProperties.First()))

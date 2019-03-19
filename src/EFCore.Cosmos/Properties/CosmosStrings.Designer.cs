@@ -3,6 +3,7 @@
 using System;
 using System.Reflection;
 using System.Resources;
+using System.Threading;
 using JetBrains.Annotations;
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Internal
@@ -31,14 +32,6 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Internal
             => string.Format(
                 GetString("OrphanedNestedDocumentSensitive", nameof(entityType), nameof(missingEntityType), nameof(keyValue)),
                 entityType, missingEntityType, keyValue);
-
-        /// <summary>
-        ///     The entity of type '{entityType}' cannot be queried directly because it is mapped as a part of the document mapped to '{principalEntityType}'. Rewrite the query to start with '{principalEntityType}'.
-        /// </summary>
-        public static string QueryRootNestedEntityType([CanBeNull] object entityType, [CanBeNull] object principalEntityType)
-            => string.Format(
-                GetString("QueryRootNestedEntityType", nameof(entityType), nameof(principalEntityType)),
-                entityType, principalEntityType);
 
         /// <summary>
         ///     No matching discriminator values where found for this instance of '{entityType}'.

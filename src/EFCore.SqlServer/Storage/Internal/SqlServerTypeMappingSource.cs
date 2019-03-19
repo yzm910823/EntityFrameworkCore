@@ -6,18 +6,25 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Linq.Expressions;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class SqlServerTypeMappingSource : RelationalTypeMappingSource
     {
@@ -50,7 +57,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal
             = new IntTypeMapping("int", DbType.Int32);
 
         private readonly BoolTypeMapping _bool
-            = new BoolTypeMapping("bit");
+            = new SqlServerBoolTypeMapping("bit");
 
         private readonly SqlServerStringTypeMapping _fixedLengthUnicodeString
             = new SqlServerStringTypeMapping(unicode: true, fixedLength: true);
@@ -136,18 +143,9 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal
         private readonly IReadOnlyDictionary<string, Func<Type, RelationalTypeMapping>> _namedClrMappings
             = new Dictionary<string, Func<Type, RelationalTypeMapping>>(StringComparer.Ordinal)
             {
-                {
-                    "Microsoft.SqlServer.Types.SqlHierarchyId",
-                    t => SqlServerUdtTypeMapping.CreateSqlHierarchyIdMapping(t)
-                },
-                {
-                    "Microsoft.SqlServer.Types.SqlGeography",
-                    t => SqlServerUdtTypeMapping.CreateSqlSpatialMapping(t, "geography")
-                },
-                {
-                    "Microsoft.SqlServer.Types.SqlGeometry",
-                    t => SqlServerUdtTypeMapping.CreateSqlSpatialMapping(t, "geometry")
-                }
+                { "Microsoft.SqlServer.Types.SqlHierarchyId", t => SqlServerUdtTypeMapping.CreateSqlHierarchyIdMapping(t) },
+                { "Microsoft.SqlServer.Types.SqlGeography", t => SqlServerUdtTypeMapping.CreateSqlSpatialMapping(t, "geography") },
+                { "Microsoft.SqlServer.Types.SqlGeometry", t => SqlServerUdtTypeMapping.CreateSqlSpatialMapping(t, "geometry") }
             };
 
         /// <summary>
@@ -250,7 +248,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal
         /// </summary>
         protected override RelationalTypeMapping FindMapping(in RelationalTypeMappingInfo mappingInfo)
             => FindRawMapping(mappingInfo)?.Clone(mappingInfo)
-                ?? base.FindMapping(mappingInfo);
+               ?? base.FindMapping(mappingInfo);
 
         private RelationalTypeMapping FindRawMapping(RelationalTypeMappingInfo mappingInfo)
         {

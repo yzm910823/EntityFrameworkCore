@@ -11,12 +11,20 @@ using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Update;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Update.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class SqlServerUpdateSqlGenerator : UpdateSqlGenerator, ISqlServerUpdateSqlGenerator
     {
@@ -354,9 +362,9 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Update.Internal
             }
 
             return property.ClrType == typeof(byte[])
-                && typeName != null
-                && (typeName.Equals("rowversion", StringComparison.OrdinalIgnoreCase)
-                    || typeName.Equals("timestamp", StringComparison.OrdinalIgnoreCase))
+                   && typeName != null
+                   && (typeName.Equals("rowversion", StringComparison.OrdinalIgnoreCase)
+                       || typeName.Equals("timestamp", StringComparison.OrdinalIgnoreCase))
                 ? property.IsNullable ? "varbinary(8)" : "binary(8)"
                 : typeName;
         }

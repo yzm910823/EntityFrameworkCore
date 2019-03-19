@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -217,7 +218,9 @@ namespace Microsoft.EntityFrameworkCore
             public DbSet<Question> Questions { get; set; }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(databaseName: "issue7119");
+                => optionsBuilder
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(databaseName: "issue7119");
 
             protected internal override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -589,7 +592,9 @@ namespace Microsoft.EntityFrameworkCore
         [Fact]
         public async Task Add_Attach_Remove_Update_do_not_call_DetectChanges()
         {
-            var provider = InMemoryTestHelpers.Instance.CreateServiceProvider(new ServiceCollection().AddScoped<IChangeDetector, ChangeDetectorProxy>());
+            var provider =
+                InMemoryTestHelpers.Instance.CreateServiceProvider(
+                    new ServiceCollection().AddScoped<IChangeDetector, ChangeDetectorProxy>());
             using (var context = new ButTheHedgehogContext(provider))
             {
                 var changeDetector = (ChangeDetectorProxy)context.GetService<IChangeDetector>();
@@ -851,7 +856,6 @@ namespace Microsoft.EntityFrameworkCore
 
             // methods (tests all paths)
             Assert.Throws<ObjectDisposedException>(() => context.Add(new object()));
-            Assert.Throws<ObjectDisposedException>(() => context.Query<object>());
             Assert.Throws<ObjectDisposedException>(() => context.Find(typeof(Random), 77));
             Assert.Throws<ObjectDisposedException>(() => context.Attach(new object()));
             Assert.Throws<ObjectDisposedException>(() => context.Update(new object()));
@@ -907,9 +911,13 @@ namespace Microsoft.EntityFrameworkCore
         {
             var fakeServiceProvider = new FakeServiceProvider();
             var context = new DbContext(
-                new DbContextOptionsBuilder().UseInternalServiceProvider(fakeServiceProvider).UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+                new DbContextOptionsBuilder()
+                    .UseInternalServiceProvider(fakeServiceProvider)
+                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                    .Options);
 
-            var scopeService = Assert.IsType<FakeServiceProvider.FakeServiceScope>(context.GetService<IServiceScopeFactory>().CreateScope());
+            var scopeService =
+                Assert.IsType<FakeServiceProvider.FakeServiceScope>(context.GetService<IServiceScopeFactory>().CreateScope());
 
             Assert.False(scopeService.Disposed);
 
@@ -1018,6 +1026,7 @@ namespace Microsoft.EntityFrameworkCore
         private class TestAssembly
         {
             [Key]
+            [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
             public string Name { get; set; }
 
             public ICollection<TestClass> Classes { get; } = new List<TestClass>();
@@ -1043,7 +1052,9 @@ namespace Microsoft.EntityFrameworkCore
             public DbSet<Test> Tests { get; set; }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder options)
-                => options.UseInMemoryDatabase(nameof(NullShadowKeyContext));
+                => options
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(nameof(NullShadowKeyContext));
 
             protected internal override void OnModelCreating(ModelBuilder modelBuilder)
             {

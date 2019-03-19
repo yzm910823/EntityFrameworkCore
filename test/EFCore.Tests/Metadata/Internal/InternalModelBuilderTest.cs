@@ -4,8 +4,10 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
 // ReSharper disable UnusedMember.Local
@@ -26,45 +28,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             Assert.NotNull(entityBuilder);
             Assert.NotNull(model.FindEntityType(typeof(Customer)));
             Assert.Same(entityBuilder, modelBuilder.Entity(typeof(Customer).FullName, ConfigurationSource.DataAnnotation));
-        }
-
-        [Fact]
-        public void Query_can_override_lower_or_equal_source_entity_type()
-        {
-            var model = new Model();
-            var modelBuilder = CreateModelBuilder(model);
-
-            Assert.NotNull(modelBuilder.Entity(typeof(Customer), ConfigurationSource.Convention, throwOnQuery: true));
-            Assert.NotNull(modelBuilder.Entity(typeof(Customer), ConfigurationSource.DataAnnotation, throwOnQuery: true));
-            Assert.Equal(ConfigurationSource.DataAnnotation, model.FindEntityType(typeof(Customer)).GetConfigurationSource());
-            Assert.NotNull(modelBuilder.Query(typeof(Customer), ConfigurationSource.DataAnnotation));
-            Assert.Null(modelBuilder.Entity(typeof(Customer), ConfigurationSource.Convention, throwOnQuery: true));
-            Assert.NotNull(modelBuilder.Entity(typeof(Customer).FullName, ConfigurationSource.Explicit, throwOnQuery: true));
-            Assert.Null(modelBuilder.Query(typeof(Customer), ConfigurationSource.DataAnnotation));
-
-            Assert.Equal(
-                CoreStrings.CannotAccessEntityAsQuery(nameof(Customer)),
-                Assert.Throws<InvalidOperationException>(() => modelBuilder.Query(typeof(Customer), ConfigurationSource.Explicit)).Message);
-        }
-
-        [Fact]
-        public void Entity_can_override_lower_or_equal_source_query_type()
-        {
-            var model = new Model();
-            var modelBuilder = CreateModelBuilder(model);
-
-            Assert.NotNull(modelBuilder.Query(typeof(Customer), ConfigurationSource.Convention));
-            Assert.NotNull(modelBuilder.Query(typeof(Customer), ConfigurationSource.DataAnnotation));
-            Assert.Equal(ConfigurationSource.DataAnnotation, model.FindEntityType(typeof(Customer)).GetConfigurationSource());
-            Assert.NotNull(modelBuilder.Entity(typeof(Customer), ConfigurationSource.DataAnnotation, throwOnQuery: true));
-            Assert.Null(modelBuilder.Query(typeof(Customer), ConfigurationSource.Convention));
-            Assert.NotNull(modelBuilder.Query(typeof(Customer), ConfigurationSource.Explicit));
-            Assert.Null(modelBuilder.Entity(typeof(Customer).FullName, ConfigurationSource.DataAnnotation, throwOnQuery: true));
-
-            Assert.Equal(
-                CoreStrings.CannotAccessQueryAsEntity(nameof(Customer)),
-                Assert.Throws<InvalidOperationException>(
-                    () => modelBuilder.Entity(typeof(Customer), ConfigurationSource.Explicit, throwOnQuery: true)).Message);
         }
 
         [Fact]
@@ -188,7 +151,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 .PrimaryKey(new[] { Customer.IdProperty }, ConfigurationSource.Convention);
             var orderEntityTypeBuilder = modelBuilder.Entity(typeof(Order), ConfigurationSource.Explicit);
 
-            Assert.NotNull(orderEntityTypeBuilder.HasForeignKey(typeof(Customer), new[] { Order.CustomerIdProperty }, ConfigurationSource.DataAnnotation));
+            Assert.NotNull(
+                orderEntityTypeBuilder.HasForeignKey(
+                    typeof(Customer), new[] { Order.CustomerIdProperty }, ConfigurationSource.DataAnnotation));
 
             Assert.True(modelBuilder.Ignore(typeof(Customer), ConfigurationSource.DataAnnotation));
 
@@ -224,7 +189,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             var specialCustomerEntityTypeBuilder = modelBuilder.Entity(typeof(SpecialCustomer), ConfigurationSource.Explicit);
 
             Assert.NotNull(customerEntityTypeBuilder.HasBaseType(baseEntityTypeBuilder.Metadata, ConfigurationSource.Convention));
-            Assert.NotNull(specialCustomerEntityTypeBuilder.HasBaseType(customerEntityTypeBuilder.Metadata, ConfigurationSource.Convention));
+            Assert.NotNull(
+                specialCustomerEntityTypeBuilder.HasBaseType(customerEntityTypeBuilder.Metadata, ConfigurationSource.Convention));
 
             Assert.True(modelBuilder.Ignore(typeof(Customer), ConfigurationSource.DataAnnotation));
 
@@ -241,7 +207,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 .PrimaryKey(new[] { Customer.IdProperty }, ConfigurationSource.Convention);
             var orderEntityTypeBuilder = modelBuilder.Entity(typeof(Order), ConfigurationSource.Convention);
 
-            Assert.NotNull(orderEntityTypeBuilder.HasForeignKey(typeof(Customer), new[] { Order.CustomerIdProperty }, ConfigurationSource.Explicit));
+            Assert.NotNull(
+                orderEntityTypeBuilder.HasForeignKey(typeof(Customer), new[] { Order.CustomerIdProperty }, ConfigurationSource.Explicit));
 
             Assert.False(modelBuilder.Ignore(typeof(Customer), ConfigurationSource.DataAnnotation));
 
@@ -266,7 +233,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             Assert.True(modelBuilder.Ignore(typeof(Customer), ConfigurationSource.Explicit));
 
-            modelBuilder = new ModelCleanupConvention().Apply(modelBuilder);
+            modelBuilder = new ModelCleanupConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(modelBuilder);
             Assert.Empty(modelBuilder.Metadata.GetEntityTypes());
         }
 
@@ -287,7 +254,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             Assert.True(modelBuilder.Ignore(typeof(Customer), ConfigurationSource.DataAnnotation));
 
-            modelBuilder = new ModelCleanupConvention().Apply(modelBuilder);
+            modelBuilder = new ModelCleanupConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(modelBuilder);
             Assert.Equal(new[] { typeof(Order), typeof(Product) }, modelBuilder.Metadata.GetEntityTypes().Select(et => et.ClrType));
             Assert.Equal(typeof(Product), orderEntityTypeBuilder.Metadata.GetForeignKeys().Single().PrincipalEntityType.ClrType);
         }
@@ -309,7 +276,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             Assert.True(modelBuilder.Ignore(typeof(Customer), ConfigurationSource.DataAnnotation));
 
-            modelBuilder = new ModelCleanupConvention().Apply(modelBuilder);
+            modelBuilder = new ModelCleanupConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(modelBuilder);
             Assert.Equal(new[] { typeof(Order), typeof(Product) }, modelBuilder.Metadata.GetEntityTypes().Select(et => et.ClrType));
             Assert.Equal(typeof(Product), orderEntityTypeBuilder.Metadata.GetForeignKeys().Single().PrincipalEntityType.ClrType);
         }
@@ -352,9 +319,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             Assert.Equal(2, model.GetEntityTypes(typeof(Details)).Count);
 
-            Assert.NotNull(modelBuilder.Entity(typeof(Details), ConfigurationSource.Explicit));
+            Assert.Equal(
+                CoreStrings.ClashingOwnedEntityType(typeof(Details).Name),
+                Assert.Throws<InvalidOperationException>(() => modelBuilder.Entity(typeof(Details), ConfigurationSource.Explicit)).Message);
+
+            Assert.True(modelBuilder.Ignore(typeof(Details), ConfigurationSource.Explicit));
 
             Assert.False(model.ShouldBeOwnedType(typeof(Details)));
+
+            Assert.NotNull(modelBuilder.Entity(typeof(Details), ConfigurationSource.Explicit));
 
             Assert.Empty(model.GetEntityTypes(typeof(Details)).Where(e => e.DefiningNavigationName != null));
 

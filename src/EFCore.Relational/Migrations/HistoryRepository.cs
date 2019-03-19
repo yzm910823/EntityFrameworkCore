@@ -7,12 +7,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations
 {
@@ -23,6 +25,12 @@ namespace Microsoft.EntityFrameworkCore.Migrations
     ///     </para>
     ///     <para>
     ///         Database providers must inherit from this class to implement provider-specific functionality.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
     ///     </para>
     /// </summary>
     // TODO: Leverage query pipeline for GetAppliedMigrations
@@ -54,7 +62,9 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             _model = new LazyRef<IModel>(
                 () =>
                 {
-                    var conventionSet = Dependencies.CoreConventionSetBuilder.CreateConventionSet();
+                    var conventionSet = Dependencies.CoreConventionSetBuilder.CreateConventionSet(
+                        new DiagnosticsLoggers(Dependencies.ModelLogger));
+
                     var modelBuilder = new ModelBuilder(Dependencies.ConventionSetBuilder.AddConventions(conventionSet));
 
                     modelBuilder.Entity<HistoryRow>(

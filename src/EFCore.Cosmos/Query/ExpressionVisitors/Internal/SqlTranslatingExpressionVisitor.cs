@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Cosmos.Query.Expressions.Internal;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Expressions.Internal;
@@ -21,7 +20,8 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.ExpressionVisitors.Internal
         private readonly SelectExpression _selectExpression;
         private readonly QueryCompilationContext _queryCompilationContext;
 
-        public SqlTranslatingExpressionVisitor(SelectExpression selectExpression,
+        public SqlTranslatingExpressionVisitor(
+            SelectExpression selectExpression,
             QueryCompilationContext queryCompilationContext)
         {
             _selectExpression = selectExpression;
@@ -32,7 +32,8 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.ExpressionVisitors.Internal
 
         protected override Expression VisitMember(MemberExpression memberExpression)
         {
-            var properties = MemberAccessBindingExpressionVisitor.GetPropertyPath(memberExpression,
+            var properties = MemberAccessBindingExpressionVisitor.GetPropertyPath(
+                memberExpression,
                 _queryCompilationContext, out var qsre);
 
             var newExpression = _selectExpression.BindPropertyPath(qsre, properties);
@@ -47,7 +48,8 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.ExpressionVisitors.Internal
 
         protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
         {
-            var properties = MemberAccessBindingExpressionVisitor.GetPropertyPath(methodCallExpression,
+            var properties = MemberAccessBindingExpressionVisitor.GetPropertyPath(
+                methodCallExpression,
                 _queryCompilationContext, out var qsre);
 
             var newExpression = _selectExpression.BindPropertyPath(qsre, properties);
@@ -154,6 +156,16 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.ExpressionVisitors.Internal
             }
 
             return newExpression;
+        }
+
+        protected override Expression VisitUnary(UnaryExpression node)
+        {
+            var newOperand = Visit(node.Operand);
+            return (node.NodeType == ExpressionType.Convert
+                    || node.NodeType == ExpressionType.ConvertChecked)
+                   && newOperand?.Type == node.Type
+                ? newOperand
+                : node.Update(newOperand);
         }
     }
 }

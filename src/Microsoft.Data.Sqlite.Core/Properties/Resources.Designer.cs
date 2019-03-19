@@ -41,22 +41,6 @@ namespace Microsoft.Data.Sqlite.Properties
                 operation);
 
         /// <summary>
-        /// The cache mode '{mode}' is invalid.
-        /// </summary>
-        public static string InvalidCacheMode(object mode)
-            => string.Format(
-                GetString("InvalidCacheMode", nameof(mode)),
-                mode);
-
-        /// <summary>
-        /// The CommandBehavior '{behavior}' is invalid.
-        /// </summary>
-        public static string InvalidCommandBehavior(object behavior)
-            => string.Format(
-                GetString("InvalidCommandBehavior", nameof(behavior)),
-                behavior);
-
-        /// <summary>
         /// The CommandType '{commandType}' is invalid.
         /// </summary>
         public static string InvalidCommandType(object commandType)
@@ -179,12 +163,6 @@ namespace Microsoft.Data.Sqlite.Properties
                 parameterName);
 
         /// <summary>
-        /// The SQLite library is already loaded. UseWinSqlite3 must be called before using SQLite.
-        /// </summary>
-        public static string AlreadyLoaded
-            => GetString("AlreadyLoaded");
-
-        /// <summary>
         /// The {enumType} enumeration value, {value}, is invalid.
         /// </summary>
         public static string InvalidEnumValue(object enumType, object value)
@@ -265,6 +243,12 @@ namespace Microsoft.Data.Sqlite.Properties
         /// </summary>
         public static string WriteNotSupported
             => GetString("WriteNotSupported");
+
+        /// <summary>
+        /// You specified a password in the connection string, but the native SQLite library you're using doesn't support encryption.
+        /// </summary>
+        public static string EncryptionNotSupported
+            => GetString("EncryptionNotSupported");
 
         private static string GetString(string name, params string[] formatterNames)
         {

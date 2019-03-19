@@ -19,48 +19,33 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.EntityFrameworkCore.Update.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class MigrationsModelDiffer : IMigrationsModelDiffer
     {
-        private static readonly Type[] _dropOperationTypes =
-        {
-            typeof(DropIndexOperation),
-            typeof(DropPrimaryKeyOperation),
-            typeof(DropSequenceOperation),
-            typeof(DropUniqueConstraintOperation)
-        };
+        private static readonly Type[] _dropOperationTypes = { typeof(DropIndexOperation), typeof(DropPrimaryKeyOperation), typeof(DropSequenceOperation), typeof(DropUniqueConstraintOperation) };
 
-        private static readonly Type[] _alterOperationTypes =
-        {
-            typeof(AddPrimaryKeyOperation),
-            typeof(AddUniqueConstraintOperation),
-            typeof(AlterSequenceOperation)
-        };
+        private static readonly Type[] _alterOperationTypes = { typeof(AddPrimaryKeyOperation), typeof(AddUniqueConstraintOperation), typeof(AlterSequenceOperation) };
 
-        private static readonly Type[] _renameOperationTypes =
-        {
-            typeof(RenameColumnOperation),
-            typeof(RenameIndexOperation),
-            typeof(RenameSequenceOperation)
-        };
+        private static readonly Type[] _renameOperationTypes = { typeof(RenameColumnOperation), typeof(RenameIndexOperation), typeof(RenameSequenceOperation) };
 
-        private static readonly Type[] _columnOperationTypes =
-        {
-            typeof(AddColumnOperation),
-            typeof(AlterColumnOperation)
-        };
+        private static readonly Type[] _columnOperationTypes = { typeof(AddColumnOperation), typeof(AlterColumnOperation) };
 
-        private static readonly Type[] _constraintOperationTypes =
-        {
-            typeof(AddForeignKeyOperation),
-            typeof(CreateIndexOperation)
-        };
+        private static readonly Type[] _constraintOperationTypes = { typeof(AddForeignKeyOperation), typeof(CreateIndexOperation) };
 
         private IStateManager _sourceStateManager;
         private IStateManager _targetStateManager;
@@ -829,9 +814,9 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
             var nextSource = source.DefiningEntityType ?? source.BaseType;
             var nextTarget = target.DefiningEntityType ?? target.BaseType;
             return nextSource == null
-                || !sourceTable.EntityTypes.Contains(nextSource)
-                || nextTarget == null
-                || !targetTable.EntityTypes.Contains(nextTarget)
+                   || !sourceTable.EntityTypes.Contains(nextSource)
+                   || nextTarget == null
+                   || !targetTable.EntityTypes.Contains(nextTarget)
                 ? true
                 : EntityTypePathEquals(nextSource, nextTarget, diffContext);
         }
@@ -1740,12 +1725,9 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal
         {
             if (_sourceStateManager != null)
             {
-                foreach (var sourceEntry in _sourceStateManager.Entries.ToList())
+                foreach (var sourceEntry in _sourceStateManager.ToListForState(added: true))
                 {
-                    if (sourceEntry.EntityState == EntityState.Added)
-                    {
-                        sourceEntry.SetEntityState(EntityState.Detached);
-                    }
+                    sourceEntry.SetEntityState(EntityState.Detached);
                 }
             }
 

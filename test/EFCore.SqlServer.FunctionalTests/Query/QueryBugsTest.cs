@@ -516,7 +516,7 @@ LEFT JOIN [Customer] AS [o.Customer] ON ([o].[CustomerFirstName] = [o.Customer].
 
         #region Bug7293
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (new ProjectView() {Permissions = {from ProjectUser u in value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.Query.QueryBugsTest+ProjectUser]) join User u.User in value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.Query.QueryBugsTest+User]) on Property([u], \"UserId\") equals Property([u.User], \"Id\") where  ?= (Property([p], \"Id\") == Property([u], \"ProjectId\")) =? select new PermissionView() {UserName = [u.User].Name}}}.Id == __target_ProjectId_0)'")]
         public void GroupJoin_expansion_when_optional_nav_in_projection()
         {
             using (CreateDatabase7293())
@@ -1371,7 +1371,7 @@ WHERE ([c].[FirstName] = @__firstName_0) AND ([c].[LastName] = @__8__locals1_det
                                     on eVersion.RootEntityId equals (int?)eRoot.Id
                                     into RootEntities
                                 from eRootJoined in RootEntities.DefaultIfEmpty()
-                                    // ReSharper disable once ConstantNullCoalescingCondition
+                                // ReSharper disable once ConstantNullCoalescingCondition
                                 select new
                                 {
                                     One = 1,
@@ -1396,7 +1396,7 @@ WHERE ([c].[FirstName] = @__firstName_0) AND ([c].[LastName] = @__8__locals1_det
                                     on eVersion.RootEntityId equals (int?)eRoot.Id
                                     into RootEntities
                                 from eRootJoined in RootEntities.DefaultIfEmpty()
-                                    // ReSharper disable once ConstantNullCoalescingCondition
+                                // ReSharper disable once ConstantNullCoalescingCondition
                                 select new
                                 {
                                     One = eRootJoined,
@@ -1422,7 +1422,7 @@ WHERE ([c].[FirstName] = @__firstName_0) AND ([c].[LastName] = @__8__locals1_det
                                     on eVersion.RootEntityId equals (int?)eRoot.Id
                                     into RootEntities
                                 from eRootJoined in RootEntities.DefaultIfEmpty()
-                                    // ReSharper disable once MergeConditionalExpression
+                                // ReSharper disable once MergeConditionalExpression
 #pragma warning disable IDE0029 // Use coalesce expression
                                 select eRootJoined != null ? eRootJoined : eVersion;
 #pragma warning restore IDE0029 // Use coalesce expression
@@ -1773,7 +1773,8 @@ WHERE ([c].[FirstName] = @__firstName_0) AND ([c].[LastName] = @__8__locals1_det
                             {
                                 using (var ctx = new MyContext5456(_options))
                                 {
-                                    var result = await ctx.Posts.Where(x => x.Blog.Id > 1).Include(x => x.Blog).Include(x => x.Comments).ToListAsync();
+                                    var result = await ctx.Posts.Where(x => x.Blog.Id > 1).Include(x => x.Blog).Include(x => x.Comments)
+                                        .ToListAsync();
 
                                     Assert.Equal(198, result.Count);
                                 }
@@ -1811,7 +1812,8 @@ WHERE ([c].[FirstName] = @__firstName_0) AND ([c].[LastName] = @__8__locals1_det
                             {
                                 using (var ctx = new MyContext5456(_options))
                                 {
-                                    var result = await ctx.Posts.Where(x => x.Blog.Id > 1).Include(x => x.Blog).ThenInclude(b => b.Author).ToListAsync();
+                                    var result = await ctx.Posts.Where(x => x.Blog.Id > 1).Include(x => x.Blog).ThenInclude(b => b.Author)
+                                        .ToListAsync();
 
                                     Assert.Equal(198, result.Count);
                                 }
@@ -2340,7 +2342,8 @@ WHERE [c].[Id] = @__id_0");
                     var id = 0;
                     // ReSharper disable once AccessToModifiedClosure
                     Expression<Func<Entity8909, bool>> whereExpression = c => c.Id == id;
-                    Expression<Func<Entity8909, bool>> containsExpression = c => context.Entities.Where(whereExpression).Select(e => e.Id).Contains(c.Id);
+                    Expression<Func<Entity8909, bool>> containsExpression =
+                        c => context.Entities.Where(whereExpression).Select(e => e.Id).Contains(c.Id);
 
                     id = 1;
                     context.Entities.Where(containsExpression).ToList();
@@ -2630,7 +2633,7 @@ WHERE [w].[Val] = 1");
                     context.Widgets.AddRange(w1, w2, w3);
                     context.SaveChanges();
 
-                    context.Database.ExecuteSqlCommand(
+                    context.Database.ExecuteRawSql(
                         @"CREATE FUNCTION foo.AddOne (@num int)
                                                             RETURNS int
                                                                 AS
@@ -2638,7 +2641,7 @@ WHERE [w].[Val] = 1");
                                                                 return @num + 1 ;
                                                             END");
 
-                    context.Database.ExecuteSqlCommand(
+                    context.Database.ExecuteRawSql(
                         @"CREATE FUNCTION dbo.AddTwo (@num int)
                                                             RETURNS int
                                                                 AS
@@ -2712,7 +2715,7 @@ WHERE [w].[Val] = 1");
 
                     Assert.Equal(0, valueParam.Value);
 
-                    var blogs = context.Blogs.FromSql(
+                    var blogs = context.Blogs.FromRawSql(
                             "[dbo].[GetPersonAndVoteCount]  @id, @Value out",
                             new SqlParameter
                             {
@@ -2734,7 +2737,7 @@ WHERE [w].[Val] = 1");
                 () => new MyContext9277(_options),
                 context =>
                 {
-                    context.Database.ExecuteSqlCommand(
+                    context.Database.ExecuteRawSql(
                         @"CREATE PROCEDURE [dbo].[GetPersonAndVoteCount]
  (
     @id int,
@@ -2978,7 +2981,7 @@ FROM [Customers] AS [b]
 LEFT JOIN [CustomerDetails9735] AS [b.CustomerDetails] ON [b].[CustomerDetailsId] = [b.CustomerDetails].[Id]
 ORDER BY CASE
     WHEN [b].[AddressId] > 0
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END, CASE
     WHEN [b].[CustomerDetailsId] IS NOT NULL
     THEN [b.CustomerDetails].[Name] ELSE N''
@@ -2993,7 +2996,7 @@ INNER JOIN (
     FROM (
         SELECT TOP(@__p_0) [b0].[Id], CASE
             WHEN [b0].[AddressId] > 0
-            THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+            THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
         END AS [c], CASE
             WHEN [b0].[CustomerDetailsId] IS NOT NULL
             THEN [b.CustomerDetails0].[Name] ELSE N''
@@ -3075,7 +3078,7 @@ ORDER BY [t0].[c], [t0].[c0], [t0].[Id]");
 
         #region Bug9892
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'join <>f__AnonymousType12`2 c in {from Child9892 x in value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.Query.QueryBugsTest+Child9892]) join OtherParent9892 x.OtherParent in value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.Query.QueryBugsTest+OtherParent9892]) on Property([x], \"OtherParentId\") equals Property([x.OtherParent], \"Id\") select new <>f__AnonymousType12`2(ParentId = [x].ParentId, OtherParent = [x.OtherParent].Name)} on [p].Id equals [c].ParentId'")]
         public virtual void GroupJoin_to_parent_with_no_child_works_9892()
         {
             using (CreateDatabase9892())
@@ -3230,8 +3233,8 @@ ORDER BY [t0].[c], [t0].[c0], [t0].[Id]");
                         @"SELECT CASE
     WHEN [t].[ConfigurationId] IS NOT NULL
     THEN CASE
-        WHEN [t.Configuration].[Processed] = 0
-        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+        WHEN [t.Configuration].[Processed] = CAST(0 AS bit)
+        THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
     END ELSE NULL
 END AS [Processing]
 FROM [Carts] AS [t]
@@ -3514,6 +3517,7 @@ WHERE ([t].[__RowNumber__] > @__p_0) AND ([t].[__RowNumber__] <= (@__p_0 + @__p_
             {
                 optionsBuilder
                     .UseLoggerFactory(_loggerFactory)
+                    .EnableServiceProviderCaching(false)
                     .UseSqlServer(
                         SqlServerTestStore.CreateConnectionString("RowNumberPaging_Owned"),
                         b => b.UseRowNumberForPaging());
@@ -3521,7 +3525,7 @@ WHERE ([t].[__RowNumber__] > @__p_0) AND ([t].[__RowNumber__] <= (@__p_0 + @__p_
 
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
-                modelBuilder.Entity<Note>().OwnsOne(n => n.User);
+                modelBuilder.Entity<Note>().OwnsOne(n => n.User).WithOwner().HasForeignKey(u => u.Id);
             }
         }
 
@@ -3659,7 +3663,7 @@ WHERE [e].[SomeValue] = @__ef_filter__Tenant_0");
                     AssertSql(
                         @"SELECT [b].[Id], [b].[IsTwo], [b].[MoreStuffId]
 FROM [Bases] AS [b]
-WHERE [b].[IsTwo] IN (1, 0)");
+WHERE [b].[IsTwo] IN (CAST(1 AS bit), CAST(0 AS bit))");
                 }
             }
         }
@@ -3958,7 +3962,7 @@ WHERE EXISTS (
         }
 
         [Fact(Skip = "Issue#13361")]
-        public virtual void Query_type_used_inside_defining_query()
+        public virtual void Keyless_type_used_inside_defining_query()
         {
             using (CreateDatabase11803())
             {
@@ -4039,7 +4043,7 @@ WHERE ([t].[Name] <> N'Bar') OR [t].[Name] IS NULL");
         {
             public DbSet<Faction> Factions { get; set; }
             public DbSet<Leader> Leaders { get; set; }
-            public DbQuery<LeaderQuery> LeadersQuery { get; set; }
+            public DbSet<LeaderQuery> LeadersQuery { get; set; }
 
             public MyContext11803(DbContextOptions options)
                 : base(options)
@@ -4052,7 +4056,8 @@ WHERE ([t].[Name] <> N'Bar') OR [t].[Name] IS NULL");
                 modelBuilder.Entity<Faction>().HasQueryFilter(f => Leaders.Any(l => l.Name == "Crach an Craite"));
 
                 modelBuilder
-                    .Query<FactionQuery>()
+                    .Entity<FactionQuery>()
+                    .HasNoKey()
                     .ToQuery(
                         () => Set<Leader>()
                             .Where(lq => lq.Name != "Foo")
@@ -4063,9 +4068,10 @@ WHERE ([t].[Name] <> N'Bar') OR [t].[Name] IS NULL");
                                 }));
 
                 modelBuilder
-                    .Query<LeaderQuery>()
+                    .Entity<LeaderQuery>()
+                    .HasNoKey()
                     .ToQuery(
-                        () => Query<FactionQuery>()
+                        () => Set<FactionQuery>()
                             .Where(fq => fq.Name != "Bar")
                             .Select(
                                 fq => new LeaderQuery
@@ -4106,7 +4112,7 @@ WHERE ([t].[Name] <> N'Bar') OR [t].[Name] IS NULL");
 
         public static bool ClientMethod11923(int id) => true;
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'First()'")]
         public virtual void Collection_without_setter_materialized_correctly()
         {
             using (CreateDatabase11923())
@@ -4428,7 +4434,7 @@ FROM [Prices] AS [e]");
                             DecimalColumn = 3.0m,
                             Price = 0.00345223m
                         }
-                        );
+                    );
 
                     context.SaveChanges();
 
@@ -4477,7 +4483,7 @@ FROM [Prices] AS [e]");
 
         #region Bug12582
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'OfType<Microsoft.EntityFrameworkCore.Query.QueryBugsTest+IEmployee12582>()'")]
         public virtual void Include_collection_with_OfType_base()
         {
             using (CreateDatabase12582())
@@ -4584,10 +4590,11 @@ FROM [Prices] AS [e]");
                                 select new
                                 {
                                     blog.Name,
-                                    Comments = blog.Comments.Select(u => new
-                                    {
-                                        u.Id,
-                                    }).ToArray(),
+                                    Comments = blog.Comments.Select(
+                                        u => new
+                                        {
+                                            u.Id
+                                        }).ToArray()
                                 };
                     var result = query.ToList();
                     Assert.Equal(1, result[0].Comments.Count());
@@ -4612,20 +4619,25 @@ FROM [Prices] AS [e]");
         {
             public DbSet<Blog12748> Blogs { get; set; }
             public DbSet<Comment12748> Comments { get; set; }
+
             public MyContext12748(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
+
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
             }
         }
+
         public class Blog12748
         {
             [Key]
             public byte[] Name { get; set; }
+
             public List<Comment12748> Comments { get; set; }
         }
+
         public class Comment12748
         {
             public int Id { get; set; }
@@ -4646,7 +4658,7 @@ FROM [Prices] AS [e]");
                 {
                     var query = (from e in context.Employees
                                  join d in context.EmployeeDevices
-                                    on e.Id equals d.EmployeeId into grouping
+                                     on e.Id equals d.EmployeeId into grouping
                                  from j in grouping.DefaultIfEmpty()
                                  select new Holder13025
                                  {
@@ -4692,10 +4704,12 @@ FROM [Prices] AS [e]");
         {
             public DbSet<Employee13025> Employees { get; set; }
             public DbSet<EmployeeDevice13025> EmployeeDevices { get; set; }
+
             public MyContext13025(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
+
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
             }
@@ -4750,7 +4764,7 @@ FROM [Prices] AS [e]");
             public virtual DbSet<DefinitionHistory12170> DefinitionHistories { get; set; }
 
             public MyContext12170(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
 
@@ -4776,7 +4790,7 @@ FROM [Prices] AS [e]");
             public virtual OptionalChangePoint12170 RemovedPoint { get; set; }
         }
 
-        public partial class DefinitionHistory12170
+        public class DefinitionHistory12170
         {
             public int Id { get; set; }
             public int MacGuffinDefinitionID { get; set; }
@@ -4784,7 +4798,7 @@ FROM [Prices] AS [e]");
             public OptionalChangePoint12170 EndedPoint { get; set; }
         }
 
-        public partial class Definition12170
+        public class Definition12170
         {
             public int Id { get; set; }
             public virtual MasterChangeInfo12170 ChangeInfo { get; set; }
@@ -4857,7 +4871,7 @@ FROM [Prices] AS [e]");
             public DbSet<ElementarySchool11944> ElementarySchools { get; set; }
 
             public MyContext11944(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
 
@@ -4898,7 +4912,8 @@ FROM [Prices] AS [e]");
             {
                 using (var context = new MyContext13118(_options))
                 {
-                    var testDateList = new List<DateTime>() { new DateTime(2018, 10, 07) };
+                    var testDateList = new List<DateTime>
+                        { new DateTime(2018, 10, 07) };
                     var findRecordsWithDateInList = context.ReproEntity
                         .Where(a => testDateList.Contains(a.MyTime))
                         .ToList();
@@ -4939,7 +4954,7 @@ WHERE [a].[MyTime] IN ('2018-10-07T00:00:00.000')");
             public virtual DbSet<ReproEntity13118> ReproEntity { get; set; }
 
             public MyContext13118(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
 
@@ -5010,7 +5025,7 @@ END IN ('0a47bcb7-a1cb-4345-8944-c58f82d6aac7', '5f221fb9-66f4-442a-92c9-d97ed59
             public DbSet<Todo> Todos { get; set; }
 
             public MyContext12732(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
         }
@@ -5038,16 +5053,20 @@ END IN ('0a47bcb7-a1cb-4345-8944-c58f82d6aac7', '5f221fb9-66f4-442a-92c9-d97ed59
                 using (var context = new MyContext13157(_options))
                 {
                     var partners = context.Partners
-                        .Select(x => new
-                        {
-                            Addresses = x.Addresses.Select(y => new
+                        .Select(
+                            x => new
                             {
-                                Turnovers = y.Turnovers == null ? null : new
-                                {
-                                    y.Turnovers.AmountIn
-                                },
-                            }).ToList()
-                        }).ToList();
+                                Addresses = x.Addresses.Select(
+                                    y => new
+                                    {
+                                        Turnovers = y.Turnovers == null
+                                            ? null
+                                            : new
+                                            {
+                                                y.Turnovers.AmountIn
+                                            }
+                                    }).ToList()
+                            }).ToList();
 
                     Assert.Single(partners);
                     Assert.Single(partners[0].Addresses);
@@ -5061,7 +5080,7 @@ ORDER BY [x].[Id]",
                         //
                         @"SELECT [t].[Id], CASE
     WHEN [x.Addresses].[Id] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END, [x.Addresses].[Turnovers_AmountIn] AS [AmountIn], [x.Addresses].[Partner13157Id]
 FROM [Address13157] AS [x.Addresses]
 INNER JOIN (
@@ -5093,7 +5112,7 @@ ORDER BY [t].[Id]");
                                 }
                             }
                         }
-                        );
+                    );
 
                     context.SaveChanges();
                     ClearLog();
@@ -5105,7 +5124,7 @@ ORDER BY [t].[Id]");
             public virtual DbSet<Partner13157> Partners { get; set; }
 
             public MyContext13157(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
 
@@ -5143,7 +5162,7 @@ ORDER BY [t].[Id]");
             {
                 using (var context = new MyContext13346(_options))
                 {
-                    var query = context.Query<OrderSummary13346>().ToList();
+                    var query = context.Set<OrderSummary13346>().ToList();
 
                     Assert.Equal(4, query.Count);
 
@@ -5160,11 +5179,11 @@ ORDER BY [t].[Id]");
                 context =>
                 {
                     context.AddRange(
-                        new Order13346 { Amount = 1},
-                        new Order13346 { Amount = 2},
-                        new Order13346 { Amount = 3},
-                        new Order13346 { Amount = 4}
-                        );
+                        new Order13346 { Amount = 1 },
+                        new Order13346 { Amount = 2 },
+                        new Order13346 { Amount = 3 },
+                        new Order13346 { Amount = 4 }
+                    );
 
                     context.SaveChanges();
                     ClearLog();
@@ -5176,15 +5195,17 @@ ORDER BY [t].[Id]");
             public virtual DbSet<Order13346> Orders { get; set; }
 
             public MyContext13346(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
 
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
-                modelBuilder.Query<OrderSummary13346>().ToQuery(
-                    () => Query<OrderSummary13346>()
-                            .FromSql("SELECT o.Amount From Orders AS o"));
+                modelBuilder.Entity<OrderSummary13346>()
+                    .HasNoKey()
+                    .ToQuery(
+                        () => Set<OrderSummary13346>()
+                            .FromRawSql("SELECT o.Amount From Orders AS o"));
             }
         }
 
@@ -5238,7 +5259,7 @@ WHERE @@ROWCOUNT = 1 AND [Id] = scope_identity();");
             public virtual DbSet<BaseEntity13079> BaseEntities { get; set; }
 
             public MyContext13079(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
 
@@ -5294,11 +5315,13 @@ FROM [InventoryPools] AS [p]");
         {
             return CreateTestStore(
                 () => new MyContext13587(_options),
-                context => {
-                    context.InventoryPools.Add(new InventoryPool13587
-                    {
-                        Quantity = 2,
-                    });
+                context =>
+                {
+                    context.InventoryPools.Add(
+                        new InventoryPool13587
+                        {
+                            Quantity = 2
+                        });
 
                     context.SaveChanges();
 
@@ -5311,7 +5334,7 @@ FROM [InventoryPools] AS [p]");
             public virtual DbSet<InventoryPool13587> InventoryPools { get; set; }
 
             public MyContext13587(DbContextOptions options)
-               : base(options)
+                : base(options)
             {
             }
         }

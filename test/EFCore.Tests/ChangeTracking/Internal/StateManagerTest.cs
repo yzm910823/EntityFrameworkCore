@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -322,17 +321,18 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         private class SensitiveIdentityConflictContext : IdentityConflictContext
         {
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-            {
-                optionsBuilder.EnableSensitiveDataLogging();
-
-                base.OnConfiguring(optionsBuilder);
-            }
+                => optionsBuilder
+                    .UseInMemoryDatabase(nameof(IdentityConflictContext))
+                    .EnableSensitiveDataLogging()
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultSensitiveServiceProvider);
         }
 
         private class IdentityConflictContext : DbContext
         {
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(nameof(IdentityConflictContext));
+                => optionsBuilder
+                    .UseInMemoryDatabase(nameof(IdentityConflictContext))
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider);
 
             protected internal override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -666,9 +666,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             };
 
             var entry = stateManager.GetOrCreateEntry(category);
-            stateManager.StartTracking(entry);
-            stateManager.StopTracking(entry);
-            stateManager.StartTracking(entry);
+            entry.SetEntityState(EntityState.Added);
+            entry.SetEntityState(EntityState.Detached);
+            entry.SetEntityState(EntityState.Added);
 
             var entry2 = stateManager.GetOrCreateEntry(category);
             Assert.Same(entry, entry2);
@@ -685,13 +685,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             };
 
             var entry = stateManager.GetOrCreateEntry(category);
-            stateManager.StartTracking(entry);
-            stateManager.StopTracking(entry);
+            entry.SetEntityState(EntityState.Added);
+            entry.SetEntityState(EntityState.Detached);
 
             var entry2 = stateManager.GetOrCreateEntry(category);
             Assert.NotSame(entry, entry2);
 
-            stateManager.StartTracking(entry2);
+            entry2.SetEntityState(EntityState.Added);
         }
 
         [Fact]
@@ -705,11 +705,11 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             };
 
             var entry = stateManager.GetOrCreateEntry(category);
-            stateManager.StartTracking(entry);
-            stateManager.StopTracking(entry);
+            entry.SetEntityState(EntityState.Added);
+            entry.SetEntityState(EntityState.Detached);
 
             var entry2 = stateManager.GetOrCreateEntry(category);
-            stateManager.StartTracking(entry2);
+            entry2.SetEntityState(EntityState.Added);
 
             Assert.NotSame(entry, entry2);
             Assert.Equal(EntityState.Detached, entry.EntityState);
@@ -896,9 +896,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         [Fact]
         public void DetectChanges_is_called_for_all_tracked_entities_and_returns_true_if_any_changes_detected()
         {
-            var contextServices = InMemoryTestHelpers.Instance.CreateContextServices(
-                new ServiceCollection().AddScoped<IChangeDetector, ChangeDetectorProxy>(),
-                BuildModel());
+            var contextServices = InMemoryTestHelpers.Instance.CreateContextServices(BuildModel());
 
             var stateManager = contextServices.GetRequiredService<IStateManager>();
 
@@ -928,36 +926,18 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             entry2.SetEntityState(EntityState.Unchanged);
             entry3.SetEntityState(EntityState.Unchanged);
 
-            var changeDetector = (ChangeDetectorProxy)contextServices.GetRequiredService<IChangeDetector>();
+            var changeDetector = contextServices.GetRequiredService<IChangeDetector>();
+
+            ((Category)entry1.Entity).Name = "Egarevebs";
+            ((Category)entry2.Entity).Name = "Doofs";
+            ((Category)entry3.Entity).Name = "Ffuts";
 
             changeDetector.DetectChanges(stateManager);
 
-            Assert.Equal(new[] { 77, 78, 79 }, changeDetector.Entries.Select(e => ((Category)e.Entity).Id).ToArray());
+            Assert.Equal(EntityState.Modified, entry1.EntityState);
+            Assert.Equal(EntityState.Modified, entry2.EntityState);
+            Assert.Equal(EntityState.Modified, entry3.EntityState);
 
-            ((Category)entry2.Entity).Name = "Snacks";
-
-            changeDetector.DetectChanges(stateManager);
-
-            Assert.Equal(new[] { 77, 78, 79, 77, 78, 79 }, changeDetector.Entries.Select(e => ((Category)e.Entity).Id).ToArray());
-        }
-
-        internal class ChangeDetectorProxy : ChangeDetector
-        {
-            public ChangeDetectorProxy(
-                IDiagnosticsLogger<DbLoggerCategory.ChangeTracking> logger,
-                ILoggingOptions loggingOptions)
-                : base(logger, loggingOptions)
-            {
-            }
-
-            public List<InternalEntityEntry> Entries { get; } = new List<InternalEntityEntry>();
-
-            public override void DetectChanges(InternalEntityEntry entry)
-            {
-                Entries.Add(entry);
-
-                base.DetectChanges(entry);
-            }
         }
 
         [Fact]

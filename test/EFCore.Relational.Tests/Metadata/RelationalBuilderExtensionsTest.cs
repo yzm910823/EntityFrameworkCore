@@ -45,7 +45,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 .HasIndex(e => e.Id)
                 .HasFilter("[Id] % 2 = 0");
 
-            Assert.IsType<IndexBuilder>(returnedBuilder);
+            Assert.IsType<IndexBuilder<Customer>>(returnedBuilder);
 
             var model = builder.Model;
             var index = model.FindEntityType(typeof(Customer)).GetIndexes().Single();
@@ -326,7 +326,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             modelBuilder
                 .Entity<Customer>().HasMany(e => e.Orders).WithOne(e => e.Customer).HasForeignKey(e => e.CustomerId);
 
-            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
+            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys()
+                .Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
 
             Assert.Equal("FK_Order_Customer_CustomerId", foreignKey.Relational().Name);
 
@@ -345,7 +346,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 .Entity<Customer>().HasMany(e => e.Orders).WithOne(e => e.Customer)
                 .HasConstraintName("LemonSupreme");
 
-            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
+            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys()
+                .Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
 
             Assert.Equal("LemonSupreme", foreignKey.Relational().Name);
 
@@ -366,7 +368,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 .HasForeignKey(e => e.CustomerId)
                 .HasConstraintName("LemonSupreme");
 
-            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
+            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys()
+                .Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
 
             Assert.Equal("LemonSupreme", foreignKey.Relational().Name);
         }
@@ -380,7 +383,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 .Entity<Order>().HasOne(e => e.Customer).WithMany(e => e.Orders)
                 .HasConstraintName("LemonSupreme");
 
-            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
+            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys()
+                .Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
 
             Assert.Equal("LemonSupreme", foreignKey.Relational().Name);
 
@@ -401,7 +405,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 .HasForeignKey(e => e.CustomerId)
                 .HasConstraintName("LemonSupreme");
 
-            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys().Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
+            var foreignKey = modelBuilder.Model.FindEntityType(typeof(Order)).GetForeignKeys()
+                .Single(fk => fk.PrincipalEntityType.ClrType == typeof(Customer));
 
             Assert.Equal("LemonSupreme", foreignKey.Relational().Name);
         }
@@ -719,22 +724,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             Assert.Equal(typeof(string), entityType.Relational().DiscriminatorProperty.ClrType);
             Assert.Equal("1", entityType.Relational().DiscriminatorValue);
             Assert.Equal("2", modelBuilder.Model.FindEntityType(typeof(SpecialCustomer)).Relational().DiscriminatorValue);
-        }
-
-        [Fact]
-        public void Can_set_discriminator_values_for_query_types()
-        {
-            var modelBuilder = CreateConventionModelBuilder();
-
-            modelBuilder.Ignore<Order>();
-
-            modelBuilder.Query<Customer>()
-                .HasDiscriminator<string>("Type")
-                .HasValue<Customer>("Base")
-                .HasValue<SpecialCustomer>("Derived");
-
-            Assert.True(modelBuilder.Model.FindEntityType(typeof(Customer)).IsQueryType);
-            Assert.True(modelBuilder.Model.FindEntityType(typeof(SpecialCustomer)).IsQueryType);
         }
 
         [Fact]

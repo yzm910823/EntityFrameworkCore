@@ -13,14 +13,23 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Expressions.Internal;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
+using Microsoft.Extensions.DependencyInjection;
 using Remotion.Linq.Clauses;
 using Remotion.Linq.Clauses.Expressions;
 
 namespace Microsoft.EntityFrameworkCore.Query.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class ExpressionPrinter : ExpressionVisitorBase, IExpressionPrinter
     {
@@ -574,21 +583,21 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected override Expression VisitMemberInit(MemberInitExpression memeberInitExpression)
+        protected override Expression VisitMemberInit(MemberInitExpression memberInitExpression)
         {
-            _stringBuilder.Append("new " + memeberInitExpression.Type.ShortDisplayName());
+            _stringBuilder.Append("new " + memberInitExpression.Type.ShortDisplayName());
 
-            var appendAction = memeberInitExpression.Bindings.Count > 1 ? (Action<string>)AppendLine : Append;
+            var appendAction = memberInitExpression.Bindings.Count > 1 ? (Action<string>)AppendLine : Append;
             appendAction("{ ");
             _stringBuilder.IncrementIndent();
 
-            for (var i = 0; i < memeberInitExpression.Bindings.Count; i++)
+            for (var i = 0; i < memberInitExpression.Bindings.Count; i++)
             {
-                if (memeberInitExpression.Bindings[i] is MemberAssignment assignment)
+                if (memberInitExpression.Bindings[i] is MemberAssignment assignment)
                 {
                     _stringBuilder.Append(assignment.Member.Name + " = ");
                     Visit(assignment.Expression);
-                    appendAction(i == memeberInitExpression.Bindings.Count - 1 ? " " : ", ");
+                    appendAction(i == memberInitExpression.Bindings.Count - 1 ? " " : ", ");
                 }
                 else
                 {
@@ -600,7 +609,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             _stringBuilder.DecrementIndent();
             AppendLine("}");
 
-            return memeberInitExpression;
+            return memberInitExpression;
         }
 
         private static readonly List<string> _simpleMethods = new List<string>

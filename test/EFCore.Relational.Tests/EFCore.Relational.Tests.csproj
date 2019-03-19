@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EFCore.Relational.Specification.Tests\EFCore.Relational.Specification.Tests.csproj" />
+    <ProjectReference Include="..\EFCore.Relational.Specification.Tests\EFCore.Relational.Specification.Tests.csproj" />
     <ProjectReference Include="..\EFCore.Tests\EFCore.Tests.csproj" />
   </ItemGroup>
 
@@ -24,15 +24,6 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
     <Reference Include="System.Transactions" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="TestUtilities\FakeProvider\FakeDbCommand.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="TestUtilities\FakeProvider\FakeDbConnection.cs">
-      <SubType>Component</SubType>
-    </Compile>
   </ItemGroup>
 
 </Project>

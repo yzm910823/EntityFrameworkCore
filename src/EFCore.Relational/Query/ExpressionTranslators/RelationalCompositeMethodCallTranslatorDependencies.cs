@@ -3,8 +3,8 @@
 
 using System.Collections.Generic;
 using JetBrains.Annotations;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Query.ExpressionTranslators
 {
@@ -24,6 +24,12 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionTranslators
     ///         first resolve the object from the dependency injection container, then replace selected
     ///         services using the 'With...' methods. Do not call the constructor at any point in this process.
     ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>.
+    ///         This means a single instance of each service is used by many <see cref="DbContext"/> instances.
+    ///         The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public sealed class RelationalCompositeMethodCallTranslatorDependencies
     {
@@ -40,23 +46,14 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionTranslators
         ///         the constructor at any point in this process.
         ///     </para>
         /// </summary>
-        /// <param name="logger"> A logger. </param>
         /// <param name="plugins"> The plugins. </param>
         public RelationalCompositeMethodCallTranslatorDependencies(
-            [NotNull] IDiagnosticsLogger<DbLoggerCategory.Query> logger,
             [NotNull] IEnumerable<IMethodCallTranslatorPlugin> plugins)
         {
-            Check.NotNull(logger, nameof(logger));
             Check.NotNull(plugins, nameof(plugins));
 
-            Logger = logger;
             Plugins = plugins;
         }
-
-        /// <summary>
-        ///     The logger.
-        /// </summary>
-        public IDiagnosticsLogger<DbLoggerCategory.Query> Logger { get; }
 
         /// <summary>
         ///     Gets the plugins.
@@ -66,18 +63,10 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionTranslators
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
         /// </summary>
-        /// <param name="logger"> A replacement for the current dependency of this type. </param>
-        /// <returns> A new parameter object with the given service replaced. </returns>
-        public RelationalCompositeMethodCallTranslatorDependencies With([NotNull] IDiagnosticsLogger<DbLoggerCategory.Query> logger)
-            => new RelationalCompositeMethodCallTranslatorDependencies(logger, Plugins);
-
-        /// <summary>
-        ///     Clones this dependency parameter object with one service replaced.
-        /// </summary>
         /// <param name="plugins"> A replacement for the current dependency of this type. </param>
         /// <returns> A new parameter object with the given service replaced. </returns>
         public RelationalCompositeMethodCallTranslatorDependencies With(
-                [NotNull] IEnumerable<IMethodCallTranslatorPlugin> plugins)
-            => new RelationalCompositeMethodCallTranslatorDependencies(Logger, plugins);
+            [NotNull] IEnumerable<IMethodCallTranslatorPlugin> plugins)
+            => new RelationalCompositeMethodCallTranslatorDependencies(plugins);
     }
 }

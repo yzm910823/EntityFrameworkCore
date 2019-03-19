@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -66,16 +67,21 @@ namespace Microsoft.EntityFrameworkCore
             }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(nameof(SlowContext));
+                => optionsBuilder
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(nameof(SlowContext));
         }
 
         [Fact]
         public void Adds_all_entities_based_on_all_distinct_entity_types_found()
         {
             var setFinder = new FakeSetFinder();
+            var loggers = new DiagnosticsLoggers(
+                new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>(),
+                new TestLogger<DbLoggerCategory.Model.Validation, LoggingDefinitions>());
 
             var model = CreateDefaultModelSource(setFinder)
-                .GetModel(InMemoryTestHelpers.Instance.CreateContext(), _nullConventionSetBuilder, _coreModelValidator);
+                .GetModel(InMemoryTestHelpers.Instance.CreateContext(), _nullConventionSetBuilder, _coreModelValidator, loggers);
 
             Assert.Equal(
                 new[] { typeof(SetA).DisplayName(), typeof(SetB).DisplayName() },
@@ -115,22 +121,29 @@ namespace Microsoft.EntityFrameworkCore
         public void Caches_model_by_context_type()
         {
             var modelSource = CreateDefaultModelSource(new DbSetFinder());
+            var loggers = new DiagnosticsLoggers(
+                new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>(),
+                new TestLogger<DbLoggerCategory.Model.Validation, LoggingDefinitions>());
 
-            var model1 = modelSource.GetModel(new Context1(), _nullConventionSetBuilder, _coreModelValidator);
-            var model2 = modelSource.GetModel(new Context2(), _nullConventionSetBuilder, _coreModelValidator);
+            var model1 = modelSource.GetModel(new Context1(), _nullConventionSetBuilder, _coreModelValidator, loggers);
+            var model2 = modelSource.GetModel(new Context2(), _nullConventionSetBuilder, _coreModelValidator, loggers);
 
             Assert.NotSame(model1, model2);
-            Assert.Same(model1, modelSource.GetModel(new Context1(), _nullConventionSetBuilder, _coreModelValidator));
-            Assert.Same(model2, modelSource.GetModel(new Context2(), _nullConventionSetBuilder, _coreModelValidator));
+            Assert.Same(model1, modelSource.GetModel(new Context1(), _nullConventionSetBuilder, _coreModelValidator, loggers));
+            Assert.Same(model2, modelSource.GetModel(new Context2(), _nullConventionSetBuilder, _coreModelValidator, loggers));
         }
 
         [Fact]
         public void Stores_model_version_information_as_annotation_on_model()
         {
             var modelSource = CreateDefaultModelSource(new DbSetFinder());
+            var loggers = new DiagnosticsLoggers(
+                new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>(),
+                new TestLogger<DbLoggerCategory.Model.Validation, LoggingDefinitions>());
 
-            var model = modelSource.GetModel(new Context1(), _nullConventionSetBuilder, _coreModelValidator);
-            var packageVersion = typeof(Context1).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Single(m => m.Key == "PackageVersion").Value;
+            var model = modelSource.GetModel(new Context1(), _nullConventionSetBuilder, _coreModelValidator, loggers);
+            var packageVersion = typeof(Context1).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+                .Single(m => m.Key == "PackageVersion").Value;
 
             Assert.StartsWith(packageVersion, model.GetProductVersion(), StringComparison.OrdinalIgnoreCase);
         }

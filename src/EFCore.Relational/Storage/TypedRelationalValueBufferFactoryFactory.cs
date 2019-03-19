@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 using Remotion.Linq.Parsing.ExpressionVisitors;
 
 namespace Microsoft.EntityFrameworkCore.Storage
@@ -33,6 +34,11 @@ namespace Microsoft.EntityFrameworkCore.Storage
     ///         This type is typically used by database providers (and other extensions). It is generally
     ///         not used in application code.
     ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class TypedRelationalValueBufferFactoryFactory : IRelationalValueBufferFactoryFactory
     {
@@ -43,15 +49,21 @@ namespace Microsoft.EntityFrameworkCore.Storage
             = Expression.Parameter(typeof(DbDataReader), "dataReader");
 
         private static readonly MethodInfo _getFieldValueMethod
-            = typeof(DbDataReader).GetTypeInfo().GetDeclaredMethod(nameof(DbDataReader.GetFieldValue));
+            = GetDataReaderMethod(nameof(DbDataReader.GetFieldValue));
 
         private static readonly MethodInfo _isDbNullMethod
-            = typeof(DbDataReader).GetTypeInfo().GetDeclaredMethod(nameof(DbDataReader.IsDBNull));
+            = GetDataReaderMethod(nameof(DbDataReader.IsDBNull));
 
         private static readonly MethodInfo _throwReadValueExceptionMethod
             = typeof(TypedRelationalValueBufferFactoryFactory).GetTypeInfo()
                 .GetDeclaredMethod(nameof(ThrowReadValueException));
 
+        private static MethodInfo GetDataReaderMethod(string name) =>
+            typeof(DbDataReader)
+                .GetRuntimeMethods()
+                .Single(m => m.GetParameters().Length == 1
+                             && m.GetParameters()[0].ParameterType == typeof(int)
+                             && m.Name.Equals(name, StringComparison.Ordinal));
         /// <summary>
         ///     Initializes a new instance of the <see cref="TypedRelationalValueBufferFactoryFactory" /> class.
         /// </summary>

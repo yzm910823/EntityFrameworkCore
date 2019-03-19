@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Diagnostics;
 using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -34,77 +34,81 @@ namespace Microsoft.EntityFrameworkCore.Internal
         /// </summary>
         public virtual IServiceProvider GetOrAdd([NotNull] IDbContextOptions options, bool providerRequired)
         {
-            var internalServiceProvider = options.FindExtension<CoreOptionsExtension>()?.InternalServiceProvider;
+            var coreOptionsExtension = options.FindExtension<CoreOptionsExtension>();
+            var internalServiceProvider = coreOptionsExtension?.InternalServiceProvider;
             if (internalServiceProvider != null)
             {
                 ValidateOptions(options);
 
-                var optionsInitialzer = internalServiceProvider.GetService<ISingletonOptionsInitializer>();
-                if (optionsInitialzer == null)
+                var optionsInitializer = internalServiceProvider.GetService<ISingletonOptionsInitializer>();
+                if (optionsInitializer == null)
                 {
                     throw new InvalidOperationException(CoreStrings.NoEfServices);
                 }
 
                 if (providerRequired)
                 {
-                    optionsInitialzer.EnsureInitialized(internalServiceProvider, options);
+                    optionsInitializer.EnsureInitialized(internalServiceProvider, options);
                 }
 
                 return internalServiceProvider;
             }
 
-            var key = options.Extensions
-                .OrderBy(e => e.GetType().Name)
-                .Aggregate(0L, (t, e) => (t * 397) ^ ((long)e.GetType().GetHashCode() * 397) ^ e.GetServiceProviderHashCode());
+            (IServiceProvider ServiceProvider, IDictionary<string, string> DebugInfo) BuildServiceProvider()
+            {
+                ValidateOptions(options);
 
-            return _configurations.GetOrAdd(
-                key,
-                k =>
+                var debugInfo = new Dictionary<string, string>();
+                foreach (var optionsExtension in options.Extensions)
                 {
-                    ValidateOptions(options);
+                    optionsExtension.PopulateDebugInfo(debugInfo);
+                }
 
-                    var debugInfo = new Dictionary<string, string>();
-                    foreach (var optionsExtension in options.Extensions)
+                debugInfo = debugInfo.OrderBy(v => debugInfo.Keys).ToDictionary(d => d.Key, v => v.Value);
+
+                var services = new ServiceCollection();
+                var hasProvider = ApplyServices(options, services);
+
+                var replacedServices = coreOptionsExtension?.ReplacedServices;
+                if (replacedServices != null)
+                {
+                    // For replaced services we use the service collection to obtain the lifetime of
+                    // the service to replace. The replaced services are added to a new collection, after
+                    // which provider and core services are applied. This ensures that any patching happens
+                    // to the replaced service.
+                    var updatedServices = new ServiceCollection();
+                    foreach (var descriptor in services)
                     {
-                        optionsExtension.PopulateDebugInfo(debugInfo);
-                    }
-
-                    debugInfo = debugInfo.OrderBy(v => debugInfo.Keys).ToDictionary(d => d.Key, v => v.Value);
-
-                    var services = new ServiceCollection();
-                    var hasProvider = ApplyServices(options, services);
-
-                    var replacedServices = options.FindExtension<CoreOptionsExtension>()?.ReplacedServices;
-                    if (replacedServices != null)
-                    {
-                        // For replaced services we use the service collection to obtain the lifetime of
-                        // the service to replace. The replaced services are added to a new collection, after
-                        // which provider and core services are applied. This ensures that any patching happens
-                        // to the replaced service.
-                        var updatedServices = new ServiceCollection();
-                        foreach (var descriptor in services)
+                        if (replacedServices.TryGetValue(descriptor.ServiceType, out var replacementType))
                         {
-                            if (replacedServices.TryGetValue(descriptor.ServiceType, out var replacementType))
-                            {
-                                ((IList<ServiceDescriptor>)updatedServices).Add(
-                                    new ServiceDescriptor(descriptor.ServiceType, replacementType, descriptor.Lifetime));
-                            }
+                            ((IList<ServiceDescriptor>) updatedServices).Add(
+                                new ServiceDescriptor(descriptor.ServiceType, replacementType, descriptor.Lifetime));
                         }
-
-                        ApplyServices(options, updatedServices);
-                        services = updatedServices;
                     }
 
-                    var serviceProvider = services.BuildServiceProvider();
+                    ApplyServices(options, updatedServices);
+                    services = updatedServices;
+                }
 
-                    if (hasProvider)
-                    {
-                        serviceProvider
-                            .GetRequiredService<ISingletonOptionsInitializer>()
-                            .EnsureInitialized(serviceProvider, options);
-                    }
+                var serviceProvider = services.BuildServiceProvider();
 
-                    var logger = serviceProvider.GetRequiredService<IDiagnosticsLogger<DbLoggerCategory.Infrastructure>>();
+                if (hasProvider)
+                {
+                    serviceProvider
+                        .GetRequiredService<ISingletonOptionsInitializer>()
+                        .EnsureInitialized(serviceProvider, options);
+                }
+
+                using (var scope = serviceProvider.CreateScope())
+                {
+                    var scopedProvider = scope.ServiceProvider;
+
+                    // Because IDbContextOptions cannot yet be resolved from the internal provider
+                    var logger = new DiagnosticsLogger<DbLoggerCategory.Infrastructure>(
+                        ScopedLoggerFactory.Create(scopedProvider, options),
+                        scopedProvider.GetService<ILoggingOptions>(),
+                        scopedProvider.GetService<DiagnosticSource>(),
+                        scopedProvider.GetService<LoggingDefinitions>());
 
                     if (_configurations.Count == 0)
                     {
@@ -122,9 +126,21 @@ namespace Microsoft.EntityFrameworkCore.Internal
                                 _configurations.Values.Select(e => e.ServiceProvider).ToList());
                         }
                     }
+                }
 
-                    return (serviceProvider, debugInfo);
-                }).ServiceProvider;
+                return (serviceProvider, debugInfo);
+            }
+
+            if (coreOptionsExtension?.ServiceProviderCachingEnabled == false)
+            {
+                return BuildServiceProvider().ServiceProvider;
+            }
+
+            var key = options.Extensions
+                .OrderBy(e => e.GetType().Name)
+                .Aggregate(0L, (t, e) => (t * 397) ^ ((long)e.GetType().GetHashCode() * 397) ^ e.GetServiceProviderHashCode());
+
+            return _configurations.GetOrAdd(key, k => BuildServiceProvider()).ServiceProvider;
         }
 
         private static void ValidateOptions(IDbContextOptions options)

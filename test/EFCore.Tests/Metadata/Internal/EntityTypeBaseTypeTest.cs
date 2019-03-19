@@ -460,20 +460,31 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         }
 
         [Fact]
-        public void Setting_base_type_throws_when_mixing_views_and_entities()
+        public void Setting_base_type_throws_on_keyless_type()
         {
             var model = new Model();
 
             var a = model.AddEntityType(typeof(A));
-            var b = model.AddQueryType(typeof(B));
+            var b = model.AddEntityType(typeof(B));
+            b.HasNoKey(true);
 
             Assert.Equal(
-                CoreStrings.MixedQueryEntityTypeInheritance(typeof(A).Name, typeof(B).Name),
+                CoreStrings.DerivedEntityCannotBeKeyless(typeof(B).Name),
                 Assert.Throws<InvalidOperationException>(() => b.HasBaseType(a)).Message);
+        }
+
+        [Fact]
+        public void HasNoKey_on_derived_type_throws()
+        {
+            var model = new Model();
+
+            var a = model.AddEntityType(typeof(A));
+            var b = model.AddEntityType(typeof(B));
+            b.HasBaseType(a);
 
             Assert.Equal(
-                CoreStrings.MixedQueryEntityTypeInheritance(typeof(B).Name, typeof(A).Name),
-                Assert.Throws<InvalidOperationException>(() => a.HasBaseType(b)).Message);
+                CoreStrings.DerivedEntityTypeHasNoKey(typeof(B).Name, typeof(A).Name),
+                Assert.Throws<InvalidOperationException>(() => b.HasNoKey(true)).Message);
         }
 
         [Fact]
@@ -505,7 +516,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             specialCustomerForeignKey.HasPrincipalToDependent(SpecialCustomer.DerivedOrdersProperty);
             Assert.Equal(new[] { "Orders" }, customerType.GetNavigations().Select(p => p.Name).ToArray());
             Assert.Equal(new[] { "Orders", "DerivedOrders" }, specialCustomerType.GetNavigations().Select(p => p.Name).ToArray());
-            Assert.Equal(new[] { "Orders", "DerivedOrders" }, ((IEntityType)specialCustomerType).GetNavigations().Select(p => p.Name).ToArray());
+            Assert.Equal(
+                new[] { "Orders", "DerivedOrders" }, ((IEntityType)specialCustomerType).GetNavigations().Select(p => p.Name).ToArray());
             Assert.Same(customerType.FindNavigation("Orders"), specialCustomerType.FindNavigation("Orders"));
         }
 
@@ -561,7 +573,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             specialCustomerType.HasBaseType(null);
 
             Assert.Equal(new[] { nameof(Customer.Orders) }, customerType.GetNavigations().Select(p => p.Name).ToArray());
-            Assert.Equal(new[] { nameof(SpecialCustomer.DerivedOrders) }, specialCustomerType.GetNavigations().Select(p => p.Name).ToArray());
+            Assert.Equal(
+                new[] { nameof(SpecialCustomer.DerivedOrders) }, specialCustomerType.GetNavigations().Select(p => p.Name).ToArray());
         }
 
         [Fact]
@@ -670,7 +683,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             specialCustomerForeignKey.HasPrincipalToDependent(Customer.OrdersProperty);
 
             Assert.Equal(
-                CoreStrings.NavigationForWrongForeignKey(nameof(Customer.Orders), typeof(VerySpecialCustomer).Name, "{'CustomerId'}", "{'Id'}"),
+                CoreStrings.NavigationForWrongForeignKey(
+                    nameof(Customer.Orders), typeof(VerySpecialCustomer).Name, "{'CustomerId'}", "{'Id'}"),
                 Assert.Throws<InvalidOperationException>(
                     () =>
                         customerForeignKey.HasPrincipalToDependent(Customer.OrdersProperty)).Message);
@@ -698,7 +712,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             var derivedForeignKeyProperty = specialOrderType.GetOrAddProperty(Order.IdProperty);
             var property = specialCustomerType.AddProperty("AltId", typeof(int));
             var specialCustomerKey = specialCustomerType.GetOrAddKey(property);
-            var specialCustomerForeignKey = specialOrderType.GetOrAddForeignKey(derivedForeignKeyProperty, specialCustomerKey, specialCustomerType);
+            var specialCustomerForeignKey = specialOrderType.GetOrAddForeignKey(
+                derivedForeignKeyProperty, specialCustomerKey, specialCustomerType);
             specialCustomerForeignKey.HasDependentToPrincipal(Order.CustomerProperty);
 
             Assert.Equal(
@@ -727,7 +742,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             var derivedForeignKeyProperty = verySpecialOrderType.GetOrAddProperty(Order.IdProperty);
             var property = specialCustomerType.AddProperty("AltId", typeof(int));
             var specialCustomerKey = specialCustomerType.GetOrAddKey(property);
-            var specialCustomerForeignKey = verySpecialOrderType.GetOrAddForeignKey(derivedForeignKeyProperty, specialCustomerKey, specialCustomerType);
+            var specialCustomerForeignKey = verySpecialOrderType.GetOrAddForeignKey(
+                derivedForeignKeyProperty, specialCustomerKey, specialCustomerType);
             specialCustomerForeignKey.HasDependentToPrincipal(Order.CustomerProperty);
             verySpecialOrderType.HasBaseType(specialOrderType);
 
@@ -758,7 +774,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             var derivedForeignKeyProperty = verySpecialOrderType.GetOrAddProperty(Order.IdProperty);
             var property = specialCustomerType.AddProperty("AltId", typeof(int));
             var specialCustomerKey = specialCustomerType.GetOrAddKey(property);
-            var specialCustomerForeignKey = verySpecialOrderType.GetOrAddForeignKey(derivedForeignKeyProperty, specialCustomerKey, specialCustomerType);
+            var specialCustomerForeignKey = verySpecialOrderType.GetOrAddForeignKey(
+                derivedForeignKeyProperty, specialCustomerKey, specialCustomerType);
             specialCustomerForeignKey.HasDependentToPrincipal(Order.CustomerProperty);
 
             Assert.Equal(
@@ -1080,7 +1097,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             var idProperty = entityType.GetOrAddProperty(Customer.IdProperty);
 
             Assert.Equal(
-                CoreStrings.DuplicatePropertyInList("{'" + Customer.IdProperty.Name + "', '" + Customer.IdProperty.Name + "'}", Customer.IdProperty.Name),
+                CoreStrings.DuplicatePropertyInList(
+                    "{'" + Customer.IdProperty.Name + "', '" + Customer.IdProperty.Name + "'}", Customer.IdProperty.Name),
                 Assert.Throws<InvalidOperationException>(() => entityType.AddIndex(new[] { idProperty, idProperty })).Message);
         }
 

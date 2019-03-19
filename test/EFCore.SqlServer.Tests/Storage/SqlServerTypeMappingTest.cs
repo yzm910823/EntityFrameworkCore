@@ -12,6 +12,7 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 using Microsoft.EntityFrameworkCore.TestUtilities;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 // ReSharper disable InconsistentNaming
@@ -79,7 +80,9 @@ namespace Microsoft.EntityFrameworkCore.Storage
             public DbSet<WithRowVersion> _ { get; set; }
 
             protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseSqlServer("Data Source=Branston");
+                => optionsBuilder
+                    .UseInternalServiceProvider(SqlServerFixture.DefaultServiceProvider)
+                    .UseSqlServer("Data Source=Branston");
 
             protected override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -241,8 +244,13 @@ namespace Microsoft.EntityFrameworkCore.Storage
             Test_GenerateSqlLiteral_helper(typeMapping, float.NaN, "CAST(NaN AS real)");
             Test_GenerateSqlLiteral_helper(typeMapping, float.PositiveInfinity, "CAST(Infinity AS real)");
             Test_GenerateSqlLiteral_helper(typeMapping, float.NegativeInfinity, "CAST(-Infinity AS real)");
+#if NETCOREAPP3_0
+            Test_GenerateSqlLiteral_helper(typeMapping, float.MinValue, "CAST(-3.4028235E+38 AS real)");
+            Test_GenerateSqlLiteral_helper(typeMapping, float.MaxValue, "CAST(3.4028235E+38 AS real)");
+#else
             Test_GenerateSqlLiteral_helper(typeMapping, float.MinValue, "CAST(-3.40282347E+38 AS real)");
             Test_GenerateSqlLiteral_helper(typeMapping, float.MaxValue, "CAST(3.40282347E+38 AS real)");
+#endif
         }
 
         public override void Long_literal_generated_correctly()
@@ -314,9 +322,17 @@ namespace Microsoft.EntityFrameworkCore.Storage
             public override Type GetNestedType(string name, BindingFlags bindingAttr) => throw new NotImplementedException();
             public override Type GetElementType() => throw new NotImplementedException();
             protected override bool HasElementTypeImpl() => throw new NotImplementedException();
-            protected override PropertyInfo GetPropertyImpl(string name, BindingFlags bindingAttr, Binder binder, Type returnType, Type[] types, ParameterModifier[] modifiers) => throw new NotImplementedException();
+
+            protected override PropertyInfo GetPropertyImpl(
+                string name, BindingFlags bindingAttr, Binder binder, Type returnType, Type[] types, ParameterModifier[] modifiers) =>
+                throw new NotImplementedException();
+
             public override PropertyInfo[] GetProperties(BindingFlags bindingAttr) => throw new NotImplementedException();
-            protected override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) => throw new NotImplementedException();
+
+            protected override MethodInfo GetMethodImpl(
+                string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types,
+                ParameterModifier[] modifiers) => throw new NotImplementedException();
+
             public override MethodInfo[] GetMethods(BindingFlags bindingAttr) => throw new NotImplementedException();
             public override FieldInfo GetField(string name, BindingFlags bindingAttr) => throw new NotImplementedException();
             public override FieldInfo[] GetFields(BindingFlags bindingAttr) => throw new NotImplementedException();
@@ -327,9 +343,17 @@ namespace Microsoft.EntityFrameworkCore.Storage
             protected override bool IsPointerImpl() => throw new NotImplementedException();
             protected override bool IsPrimitiveImpl() => throw new NotImplementedException();
             protected override bool IsCOMObjectImpl() => throw new NotImplementedException();
-            public override object InvokeMember(string name, BindingFlags invokeAttr, Binder binder, object target, object[] args, ParameterModifier[] modifiers, CultureInfo culture, string[] namedParameters) => throw new NotImplementedException();
+
+            public override object InvokeMember(
+                string name, BindingFlags invokeAttr, Binder binder, object target, object[] args, ParameterModifier[] modifiers,
+                CultureInfo culture, string[] namedParameters) => throw new NotImplementedException();
+
             public override Type UnderlyingSystemType { get; }
-            protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) => throw new NotImplementedException();
+
+            protected override ConstructorInfo GetConstructorImpl(
+                BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) =>
+                throw new NotImplementedException();
+
             public override string Name => throw new NotImplementedException();
             public override Guid GUID => throw new NotImplementedException();
             public override Module Module => throw new NotImplementedException();
@@ -347,6 +371,8 @@ namespace Microsoft.EntityFrameworkCore.Storage
         }
 
         protected override DbContextOptions ContextOptions { get; }
-            = new DbContextOptionsBuilder().UseSqlServer("Server=Dummy").Options;
+            = new DbContextOptionsBuilder()
+                .UseInternalServiceProvider(SqlServerFixture.DefaultServiceProvider)
+                .UseSqlServer("Server=Dummy").Options;
     }
 }

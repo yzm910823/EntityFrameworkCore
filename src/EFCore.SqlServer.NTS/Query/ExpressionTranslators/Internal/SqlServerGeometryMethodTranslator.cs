@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using GeoAPI.Geometries;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.ExpressionTranslators;
@@ -64,7 +65,9 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.ExpressionTranslators.In
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Expression Translate(MethodCallExpression methodCallExpression)
+        public virtual Expression Translate(
+            MethodCallExpression methodCallExpression,
+            IDiagnosticsLogger<DbLoggerCategory.Query> logger)
         {
             if (!typeof(IGeometry).IsAssignableFrom(methodCallExpression.Method.DeclaringType))
             {
@@ -93,6 +96,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.ExpressionTranslators.In
                         argumentTypeMappings[i] = _typeMappingSource.FindMapping(type);
                     }
                 }
+
                 if (!anyGeometryArguments)
                 {
                     argumentTypeMappings = null;
@@ -113,6 +117,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.ExpressionTranslators.In
                     _typeMappingSource.FindMapping(methodCallExpression.Object.Type, storeType),
                     argumentTypeMappings);
             }
+
             if (Equals(method, _getGeometryN))
             {
                 return new SqlFunctionExpression(
@@ -122,6 +127,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.ExpressionTranslators.In
                     new[] { Expression.Add(methodCallExpression.Arguments[0], Expression.Constant(1)) },
                     _typeMappingSource.FindMapping(typeof(IGeometry), storeType));
             }
+
             if (Equals(method, _isWithinDistance))
             {
                 return Expression.LessThanOrEqual(

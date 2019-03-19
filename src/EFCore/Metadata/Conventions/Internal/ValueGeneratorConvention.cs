@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
@@ -19,6 +20,21 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         IForeignKeyRemovedConvention,
         IBaseTypeChangedConvention
     {
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public ValueGeneratorConvention([NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> logger)
+        {
+            Logger = logger;
+        }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        protected virtual IDiagnosticsLogger<DbLoggerCategory.Model> Logger { get; }
+
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
@@ -102,8 +118,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         /// </summary>
         public virtual ValueGenerated? GetValueGenerated([NotNull] Property property)
             => !property.IsForeignKey()
-                    && property.PrimaryKey?.Properties.Count(p => !p.IsForeignKey()) == 1
-                    && CanBeGenerated(property)
+               && property.PrimaryKey?.Properties.Count(p => !p.IsForeignKey()) == 1
+               && CanBeGenerated(property)
                 ? ValueGenerated.OnAdd
                 : (ValueGenerated?)null;
 
@@ -117,10 +133,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         {
             var propertyType = property.ClrType.UnwrapNullableType();
             return (propertyType.IsInteger()
-                 && propertyType != typeof(byte))
-                || propertyType == typeof(Guid)
-                || propertyType == typeof(string)
-                || propertyType == typeof(byte[])
+                    && propertyType != typeof(byte))
+                   || propertyType == typeof(Guid)
                 ? true
                 : false;
         }

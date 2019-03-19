@@ -21,7 +21,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     {
         private DeleteBehavior? _deleteBehavior;
         private bool? _isUnique;
-        private bool? _isRequired;
+        private bool _isRequired;
         private bool? _isOwnership;
 
         private ConfigurationSource _configurationSource;
@@ -51,9 +51,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             Check.NotNull(principalKey, nameof(principalKey));
             Check.NotNull(principalEntityType, nameof(principalEntityType));
 
-            if (principalEntityType.IsQueryType)
+            if (principalEntityType.IsKeyless)
             {
-                throw new InvalidOperationException(CoreStrings.QueryTypeCannotBePrincipal(principalEntityType.DisplayName()));
+                throw new InvalidOperationException(CoreStrings.KeylessTypeCannotBePrincipal(principalEntityType.DisplayName()));
             }
 
             Properties = dependentProperties;
@@ -61,6 +61,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             DeclaringEntityType = dependentEntityType;
             PrincipalEntityType = principalEntityType;
             _configurationSource = configurationSource;
+            _isRequired = !dependentProperties.Any(p => p.IsNullable);
 
             AreCompatible(principalKey.Properties, dependentProperties, principalEntityType, dependentEntityType, shouldThrow: true);
 
@@ -273,17 +274,17 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         {
             var name = propertyIdentity?.Name;
             if (pointsToPrincipal
-                && PrincipalEntityType.IsQueryType)
+                && PrincipalEntityType.IsKeyless)
             {
                 throw new InvalidOperationException(
-                    CoreStrings.NavigationToQueryType(name, PrincipalEntityType.DisplayName()));
+                    CoreStrings.NavigationToKeylessType(name, PrincipalEntityType.DisplayName()));
             }
 
             if (!pointsToPrincipal
-                && DeclaringEntityType.IsQueryType)
+                && DeclaringEntityType.IsKeyless)
             {
                 throw new InvalidOperationException(
-                    CoreStrings.NavigationToQueryType(name, DeclaringEntityType.DisplayName()));
+                    CoreStrings.NavigationToKeylessType(name, DeclaringEntityType.DisplayName()));
             }
 
             var oldNavigation = pointsToPrincipal ? DependentToPrincipal : PrincipalToDependent;
@@ -417,7 +418,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         public virtual bool IsRequired
         {
-            get => _isRequired ?? !Properties.Any(p => p.IsNullable);
+            get => _isRequired;
             set => SetIsRequired(value, ConfigurationSource.Explicit);
         }
 
@@ -425,36 +426,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual void SetIsRequired(bool required, ConfigurationSource configurationSource)
+        public virtual ForeignKey SetIsRequired(bool required, ConfigurationSource configurationSource)
         {
-            if (required == IsRequired)
-            {
-                _isRequired = required;
-                UpdateIsRequiredConfigurationSource(configurationSource);
-                return;
-            }
-
+            var isChanging = required != IsRequired;
+            UpdateIsRequiredConfigurationSource(configurationSource);
             _isRequired = required;
 
-            var properties = Properties;
-            if (!required)
-            {
-                var nullableTypeProperties = Properties.Where(p => p.ClrType.IsNullableType()).ToList();
-                if (nullableTypeProperties.Count > 0)
-                {
-                    properties = nullableTypeProperties;
-                }
-
-                // If no properties can be made nullable, let it fail
-            }
-
-            foreach (var property in properties)
-            {
-                property.SetIsNullable(!required, configurationSource);
-            }
-
-            DeclaringEntityType.Model.ConventionDispatcher.OnForeignKeyRequirednessChanged(Builder);
-            UpdateIsRequiredConfigurationSource(configurationSource);
+            return isChanging
+                ? DeclaringEntityType.Model.ConventionDispatcher.OnForeignKeyRequirednessChanged(Builder)?.Metadata
+                : this;
         }
 
         /// <summary>
@@ -532,7 +512,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             _isOwnership = ownership;
             UpdateIsOwnershipConfigurationSource(configurationSource);
 
-            return isChanging ? DeclaringEntityType.Model.ConventionDispatcher.OnForeignKeyOwnershipChanged(Builder)?.Metadata : (this);
+            return isChanging
+                ? DeclaringEntityType.Model.ConventionDispatcher.OnForeignKeyOwnershipChanged(Builder)?.Metadata
+                : (this);
         }
 
         private static bool DefaultIsOwnership => false;
@@ -676,7 +658,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             [CanBeNull] IReadOnlyList<Property> dependentProperties,
             [CanBeNull] IReadOnlyList<Property> principalProperties,
             bool? unique,
-            bool? required,
             bool shouldThrow)
         {
             Check.NotNull(principalEntityType, nameof(principalEntityType));
@@ -716,57 +697,16 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 return false;
             }
 
-            if (dependentProperties != null
-                && !CanPropertiesBeRequired(dependentProperties, required, dependentEntityType, true))
-            {
-                return false;
-            }
-
             return principalProperties != null
-                && dependentProperties != null
-                && !AreCompatible(
-                    principalProperties,
-                    dependentProperties,
-                    principalEntityType,
-                    dependentEntityType,
-                    shouldThrow)
+                   && dependentProperties != null
+                   && !AreCompatible(
+                       principalProperties,
+                       dependentProperties,
+                       principalEntityType,
+                       dependentEntityType,
+                       shouldThrow)
                 ? false
                 : true;
-        }
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public static bool CanPropertiesBeRequired(
-            [NotNull] IReadOnlyList<Property> properties,
-            bool? required,
-            [NotNull] EntityType entityType,
-            bool shouldThrow)
-        {
-            Check.NotNull(properties, nameof(properties));
-            Check.NotNull(entityType, nameof(entityType));
-
-            if (!required.HasValue
-                || required.Value)
-            {
-                return true;
-            }
-
-            var nullableProperties = properties.Where(p => p.ClrType.IsNullableType()).ToList();
-            if (nullableProperties.Count == 0)
-            {
-                if (shouldThrow)
-                {
-                    throw new InvalidOperationException(
-                        CoreStrings.ForeignKeyCannotBeOptional(
-                            Property.Format(properties), entityType.DisplayName()));
-                }
-
-                return false;
-            }
-
-            return true;
         }
 
         /// <summary>

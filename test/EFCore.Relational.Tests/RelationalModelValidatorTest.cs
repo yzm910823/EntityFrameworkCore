@@ -5,6 +5,7 @@ using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -50,7 +51,7 @@ namespace Microsoft.EntityFrameworkCore
             property.Relational().DefaultValue = true;
             property.ValueGenerated = ValueGenerated.OnAdd;
 
-            VerifyWarning(RelationalStrings.LogBoolWithDefaultWarning.GenerateMessage("ImBool", "E"), model);
+            VerifyWarning(RelationalStrings.LogBoolWithDefaultWarning(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("ImBool", "E"), model);
         }
 
         [Fact]
@@ -66,7 +67,7 @@ namespace Microsoft.EntityFrameworkCore
             property.Relational().DefaultValueSql = "TRUE";
             property.ValueGenerated = ValueGenerated.OnAddOrUpdate;
 
-            VerifyWarning(RelationalStrings.LogBoolWithDefaultWarning.GenerateMessage("ImBool", "E"), model);
+            VerifyWarning(RelationalStrings.LogBoolWithDefaultWarning(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("ImBool", "E"), model);
         }
 
         [Fact]
@@ -77,7 +78,7 @@ namespace Microsoft.EntityFrameworkCore
             SetPrimaryKey(entityA);
             entityA.FindProperty("Id").Relational().DefaultValue = 1;
 
-            VerifyWarning(RelationalStrings.LogKeyHasDefaultValue.GenerateMessage("Id", "A"), model);
+            VerifyWarning(RelationalStrings.LogKeyHasDefaultValue(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("Id", "A"), model);
         }
 
         [Fact]
@@ -92,7 +93,7 @@ namespace Microsoft.EntityFrameworkCore
             entityA.AddKey(new[] { property });
             property.Relational().DefaultValue = 1;
 
-            VerifyWarning(RelationalStrings.LogKeyHasDefaultValue.GenerateMessage("P0", "A"), model);
+            VerifyWarning(RelationalStrings.LogKeyHasDefaultValue(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("P0", "A"), model);
         }
 
         [Fact]
@@ -187,7 +188,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDataTypeMismatch(
-                    nameof(A), nameof(A.P0), nameof(B), nameof(B.P0), nameof(B.P0), "Table", "someInt", "default_int_mapping"), modelBuilder.Model);
+                    nameof(A), nameof(A.P0), nameof(B), nameof(B.P0), nameof(B.P0), "Table", "someInt", "default_int_mapping"),
+                modelBuilder.Model);
         }
 
         [Fact]
@@ -283,7 +285,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDataTypeMismatch(
-                    nameof(Cat), nameof(Cat.Type), nameof(Dog), nameof(Dog.Type), nameof(Cat.Type), nameof(Animal), "just_string(max)", "default_int_mapping"), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Type), nameof(Dog), nameof(Dog.Type), nameof(Cat.Type), nameof(Animal), "just_string(max)",
+                    "default_int_mapping"), modelBuilder.Model);
         }
 
         [Fact]
@@ -297,7 +300,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDataTypeMismatch(
-                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "just_string(30)", "just_string(15)"), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "just_string(30)",
+                    "just_string(15)"), modelBuilder.Model);
         }
 
         [Fact]
@@ -310,7 +314,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameComputedSqlMismatch(
-                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "1", ""), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "1", ""),
+                modelBuilder.Model);
         }
 
         [Fact]
@@ -323,7 +328,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDefaultSqlMismatch(
-                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "NULL", "1"), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "NULL", "1"),
+                modelBuilder.Model);
         }
 
         [Fact]
@@ -336,7 +342,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDefaultSqlMismatch(
-                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "1", ""), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "1", ""),
+                modelBuilder.Model);
         }
 
         [Fact]
@@ -349,7 +356,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameNullabilityMismatch(
-                    nameof(Animal), nameof(Animal.Id), nameof(Dog), nameof(Dog.Type), nameof(Animal.Id), nameof(Animal)), modelBuilder.Model);
+                    nameof(Animal), nameof(Animal.Id), nameof(Dog), nameof(Dog.Type), nameof(Animal.Id), nameof(Animal)),
+                modelBuilder.Model);
         }
 
         [Fact]
@@ -545,7 +553,8 @@ namespace Microsoft.EntityFrameworkCore
             modelBuilder.Entity<Animal>();
             var fk1 = modelBuilder.Entity<Cat>().HasOne<Person>().WithMany().HasForeignKey(c => c.Name).HasPrincipalKey(p => p.Name)
                 .HasConstraintName("FK_Animal_Person_Name").Metadata;
-            var fk2 = modelBuilder.Entity<Dog>().HasOne<Person>().WithOne().HasForeignKey<Dog>(d => d.Name).HasPrincipalKey<Person>(p => p.Name)
+            var fk2 = modelBuilder.Entity<Dog>().HasOne<Person>().WithOne().HasForeignKey<Dog>(d => d.Name)
+                .HasPrincipalKey<Person>(p => p.Name)
                 .HasConstraintName("FK_Animal_Person_Name").Metadata;
 
             VerifyError(
@@ -983,14 +992,14 @@ namespace Microsoft.EntityFrameworkCore
         }
 
         [Fact]
-        public virtual void Detects_ToView_on_derived_query_types()
+        public virtual void Detects_ToTable_on_derived_entity_types()
         {
             var modelBuilder = CreateConventionalModelBuilder();
-            modelBuilder.Query<Animal>().ToView("Animal");
-            modelBuilder.Query<Cat>().ToView("Cat");
+            modelBuilder.Entity<Animal>().ToTable("Animal");
+            modelBuilder.Entity<Cat>().ToTable("Cat");
 
             VerifyError(
-                RelationalStrings.DerivedQueryTypeView(nameof(Cat), nameof(Animal)),
+                RelationalStrings.DerivedTypeTable(nameof(Cat), nameof(Animal)),
                 modelBuilder.Model);
         }
 

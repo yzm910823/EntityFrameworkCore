@@ -200,7 +200,7 @@ FROM [Customers] AS [c]");
             AssertSql(
                 @"SELECT [p].[ProductID], CASE
     WHEN [p].[UnitsInStock] > CAST(0 AS smallint)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END AS [IsAvailable]
 FROM [Products] AS [p]");
         }
@@ -517,7 +517,8 @@ WHERE [o].[CustomerID] = N'ALFKI'
 ORDER BY [o].[OrderID]");
         }
 
-        public override async Task Select_non_matching_value_types_from_binary_expression_nested_introduces_top_level_explicit_cast(bool isAsync)
+        public override async Task Select_non_matching_value_types_from_binary_expression_nested_introduces_top_level_explicit_cast(
+            bool isAsync)
         {
             await base.Select_non_matching_value_types_from_binary_expression_nested_introduces_top_level_explicit_cast(isAsync);
 
@@ -590,7 +591,7 @@ ORDER BY [Order]");
             AssertSql(
                 @"SELECT CASE
     WHEN [o].[CustomerID] IS NULL OR ([o].[CustomerID] IS NOT NULL AND ([o].[OrderID] < 100))
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END
 FROM [Orders] AS [o]
 WHERE [o].[CustomerID] = N'ALFKI'");
@@ -665,9 +666,11 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        public override async Task Project_single_element_from_collection_with_OrderBy_Distinct_and_FirstOrDefault_followed_by_projecting_length(bool isAsync)
+        public override async Task
+            Project_single_element_from_collection_with_OrderBy_Distinct_and_FirstOrDefault_followed_by_projecting_length(bool isAsync)
         {
-            await base.Project_single_element_from_collection_with_OrderBy_Distinct_and_FirstOrDefault_followed_by_projecting_length(isAsync);
+            await base.Project_single_element_from_collection_with_OrderBy_Distinct_and_FirstOrDefault_followed_by_projecting_length(
+                isAsync);
 
             AssertSql(
                 "");
@@ -732,9 +735,13 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        public override async Task Project_single_element_from_collection_with_multiple_OrderBys_Take_and_FirstOrDefault_followed_by_projection_of_length_property(bool isAsync)
+        public override async Task
+            Project_single_element_from_collection_with_multiple_OrderBys_Take_and_FirstOrDefault_followed_by_projection_of_length_property(
+                bool isAsync)
         {
-            await base.Project_single_element_from_collection_with_multiple_OrderBys_Take_and_FirstOrDefault_followed_by_projection_of_length_property(isAsync);
+            await base
+                .Project_single_element_from_collection_with_multiple_OrderBys_Take_and_FirstOrDefault_followed_by_projection_of_length_property(
+                    isAsync);
 
             AssertSql(
                 "");
@@ -778,7 +785,8 @@ FROM [Orders] AS [o]
 WHERE [o].[OrderID] < 10300");
         }
 
-        public override async Task Project_single_element_from_collection_with_OrderBy_over_navigation_Take_and_FirstOrDefault_2(bool isAsync)
+        public override async Task Project_single_element_from_collection_with_OrderBy_over_navigation_Take_and_FirstOrDefault_2(
+            bool isAsync)
         {
             await base.Project_single_element_from_collection_with_OrderBy_over_navigation_Take_and_FirstOrDefault_2(isAsync);
 
@@ -915,7 +923,7 @@ FROM [Customers] AS [c]");
             AssertSql(
                 @"SELECT CASE
     WHEN [c].[CustomerID] = N'ALFKI'
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END
 FROM [Customers] AS [c]");
         }
@@ -966,6 +974,15 @@ FROM [Orders] AS [o]");
                 @"SELECT COALESCE([o].[OrderDate], '1753-01-01T00:00:00.000')
 FROM [Customers] AS [c]
 LEFT JOIN [Orders] AS [o] ON [c].[CustomerID] = [o].[CustomerID]");
+        }
+
+        public override async Task Cast_on_top_level_projection_brings_explicit_Cast(bool isAsync)
+        {
+            await base.Cast_on_top_level_projection_brings_explicit_Cast(isAsync);
+
+            AssertSql(
+                @"SELECT CAST([o].[OrderID] AS float)
+FROM [Orders] AS [o]");
         }
     }
 }

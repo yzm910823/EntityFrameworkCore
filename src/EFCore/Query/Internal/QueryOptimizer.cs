@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Extensions.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using Remotion.Linq.Clauses.Expressions;
@@ -19,8 +20,16 @@ using Remotion.Linq.Transformations;
 namespace Microsoft.EntityFrameworkCore.Query.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class QueryOptimizer : SubQueryFromClauseFlattener, IQueryOptimizer
     {
@@ -225,7 +234,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 var isGeneratedNameOuter = fromClause.HasGeneratedItemName();
 
                 var itemName = innerMainFromClause.HasGeneratedItemName()
-                                  && !isGeneratedNameOuter
+                               && !isGeneratedNameOuter
                     ? fromClause.ItemName
                     : innerMainFromClause.ItemName;
 
@@ -297,7 +306,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 else
                 {
                     var entityType = _queryCompilationContext.Model.FindEntityType(searchedItemType)
-                        ?? _queryCompilationContext.FindEntityType(queryModel.MainFromClause);
+                                     ?? _queryCompilationContext.FindEntityType(queryModel.MainFromClause);
 
                     if (entityType != null)
                     {
@@ -412,6 +421,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 {
                     _queryCompilationContext.AddOrUpdateMapping(newQuerySource, entityType);
                 }
+
                 foreach (var queryAnnotation in _queryCompilationContext.QueryAnnotations.Where(qa => qa.QuerySource == oldQuerySource))
                 {
                     queryAnnotation.QuerySource = newQuerySource;

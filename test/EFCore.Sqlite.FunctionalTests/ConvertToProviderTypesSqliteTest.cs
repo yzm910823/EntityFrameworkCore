@@ -8,7 +8,8 @@ using Xunit.Abstractions;
 
 namespace Microsoft.EntityFrameworkCore
 {
-    public class ConvertToProviderTypesSqliteTest : ConvertToProviderTypesTestBase<ConvertToProviderTypesSqliteTest.ConvertToProviderTypesSqliteFixture>
+    public class ConvertToProviderTypesSqliteTest : ConvertToProviderTypesTestBase<
+        ConvertToProviderTypesSqliteTest.ConvertToProviderTypesSqliteFixture>
     {
         public ConvertToProviderTypesSqliteTest(ConvertToProviderTypesSqliteFixture fixture, ITestOutputHelper testOutputHelper)
             : base(fixture)
@@ -32,8 +33,7 @@ namespace Microsoft.EntityFrameworkCore
 
             public override DbContextOptionsBuilder AddOptions(DbContextOptionsBuilder builder)
                 => base.AddOptions(builder).ConfigureWarnings(
-                    c => c.Log(RelationalEventId.QueryClientEvaluationWarning)
-                        .Log(RelationalEventId.ValueConversionSqlLiteralWarning));
+                    c => c.Log(RelationalEventId.ValueConversionSqlLiteralWarning));
 
             public override bool SupportsBinaryKeys => true;
 

@@ -1,10 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.EntityFrameworkCore.TestUtilities.FakeProvider;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,14 +30,14 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
                 extension.WithConnection(new FakeDbConnection("Database=Fake")));
         }
 
-        public override IModelValidator CreateModelValidator(
-            DiagnosticsLogger<DbLoggerCategory.Model> modelLogger,
-            DiagnosticsLogger<DbLoggerCategory.Model.Validation> validationLogger)
+        public override IModelValidator CreateModelValidator()
             => new RelationalModelValidator(
-                new ModelValidatorDependencies(validationLogger, modelLogger),
+                new ModelValidatorDependencies(),
                 new RelationalModelValidatorDependencies(
                     new TestRelationalTypeMappingSource(
                         TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
                         TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>())));
+
+        public override LoggingDefinitions LoggingDefinitions { get; } = new RelationalLoggingDefinitions();
     }
 }

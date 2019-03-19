@@ -1,4 +1,4 @@
-﻿﻿// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Dynamic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Newtonsoft.Json.Linq;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 namespace Microsoft.EntityFrameworkCore.ModelBuilding
@@ -119,6 +119,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public Customer Customer { get; set; }
 
             public event PropertyChangedEventHandler PropertyChanged;
+
             protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
             {
                 if (PropertyChanged == null)
@@ -144,6 +145,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public ICollection<Product> Products { get; set; }
 
             public event PropertyChangedEventHandler PropertyChanged;
+
             protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
             {
                 if (PropertyChanged == null)
@@ -158,6 +160,13 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
         {
             public int Id { get; set; }
             public Order Order { get; set; }
+        }
+
+        protected class ProductCategory
+        {
+            public int Id { get; set; }
+            public string Name { get; set; }
+            public ICollection<Product> Products { get; set; }
         }
 
         [Owned]
@@ -456,11 +465,11 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public Kappa Kappa { get; set; }
         }
 
-        protected class JsonProperty
+        protected class DynamicProperty
         {
             public int Id { get; set; }
 
-            public JObject JObject { get; set; }
+            public ExpandoObject ExpandoObject { get; set; }
         }
 
         protected interface IEntityBase
@@ -475,9 +484,14 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
         protected class OneToOnePrincipalEntity
         {
-            public static readonly PropertyInfo NavigationProperty = typeof(OneToOnePrincipalEntity).GetProperty("NavOneToOneDependentEntity");
-            public static readonly PropertyInfo EntityMatchingProperty = typeof(OneToOnePrincipalEntity).GetProperty("OneToOneDependentEntityId");
-            public static readonly PropertyInfo NavigationMatchingProperty = typeof(OneToOnePrincipalEntity).GetProperty("NavOneToOneDependentEntityId");
+            public static readonly PropertyInfo NavigationProperty =
+                typeof(OneToOnePrincipalEntity).GetProperty("NavOneToOneDependentEntity");
+
+            public static readonly PropertyInfo EntityMatchingProperty =
+                typeof(OneToOnePrincipalEntity).GetProperty("OneToOneDependentEntityId");
+
+            public static readonly PropertyInfo NavigationMatchingProperty =
+                typeof(OneToOnePrincipalEntity).GetProperty("NavOneToOneDependentEntityId");
 
             public int Id { get; set; }
 
@@ -490,9 +504,14 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
         protected class OneToOneDependentEntity
         {
-            public static readonly PropertyInfo NavigationProperty = typeof(OneToOneDependentEntity).GetProperty("NavOneToOnePrincipalEntity");
-            public static readonly PropertyInfo EntityMatchingProperty = typeof(OneToOneDependentEntity).GetProperty("OneToOnePrincipalEntityId");
-            public static readonly PropertyInfo NavigationMatchingProperty = typeof(OneToOneDependentEntity).GetProperty("NavOneToOnePrincipalEntityId");
+            public static readonly PropertyInfo NavigationProperty =
+                typeof(OneToOneDependentEntity).GetProperty("NavOneToOnePrincipalEntity");
+
+            public static readonly PropertyInfo EntityMatchingProperty =
+                typeof(OneToOneDependentEntity).GetProperty("OneToOnePrincipalEntityId");
+
+            public static readonly PropertyInfo NavigationMatchingProperty =
+                typeof(OneToOneDependentEntity).GetProperty("NavOneToOnePrincipalEntityId");
 
             public int Id { get; set; }
 
@@ -670,6 +689,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
         protected class DependentShadowFk
         {
             public Guid DependentShadowFkId { get; set; }
+
             [ForeignKey("PrincipalShadowFkId")]
             public PrincipalShadowFk Principal { get; set; }
         }
@@ -687,7 +707,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public OwnedTypeInheritance2 Owned2 { get; set; }
         }
 
-        protected class DerivedOwner : BaseOwner { }
+        protected class DerivedOwner : BaseOwner
+        {
+        }
 
         [Owned]
         protected class OwnedTypeInheritance1
@@ -710,7 +732,12 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
         {
             public int Id { get; set; }
             public int Property { get; set; }
-            int IReplacable.Property { get => Property; set => Property = value; }
+
+            int IReplacable.Property
+            {
+                get => Property;
+                set => Property = value;
+            }
         }
     }
 }

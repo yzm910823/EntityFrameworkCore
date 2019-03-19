@@ -9,12 +9,12 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
 {
     public class CosmosQueryContextFactory : QueryContextFactory
     {
-        private readonly CosmosClient _cosmosClient;
+        private readonly CosmosClientWrapper _cosmosClient;
 
         public CosmosQueryContextFactory(
             [NotNull] QueryContextDependencies dependencies,
-            [NotNull] CosmosClient cosmosClient)
-               : base(dependencies)
+            [NotNull] CosmosClientWrapper cosmosClient)
+            : base(dependencies)
         {
             _cosmosClient = cosmosClient;
         }

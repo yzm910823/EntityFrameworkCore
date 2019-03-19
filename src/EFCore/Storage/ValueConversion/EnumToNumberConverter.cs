@@ -6,6 +6,8 @@ using System.Linq.Expressions;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Internal;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
 {
     /// <summary>
@@ -16,9 +18,9 @@ namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
         where TNumber : struct
     {
         // ReSharper disable once StaticMemberInGenericType
-        private static readonly ConverterMappingHints _defaultHints = CreateDefaultHints();
+        private static readonly ConverterMappingHints? _defaultHints = CreateDefaultHints();
 
-        private static ConverterMappingHints CreateDefaultHints()
+        private static ConverterMappingHints? CreateDefaultHints()
         {
             var underlyingModelType = typeof(TEnum).UnwrapEnumType();
 
@@ -35,13 +37,13 @@ namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion
         ///     Hints that can be used by the <see cref="ITypeMappingSource" /> to create data types with appropriate
         ///     facets for the converted data.
         /// </param>
-        public EnumToNumberConverter([CanBeNull] ConverterMappingHints mappingHints = null)
+        public EnumToNumberConverter([CanBeNull] ConverterMappingHints? mappingHints = null)
             : base(
+#nullable disable // https://github.com/dotnet/roslyn/issues/30953
                 ToNumber(),
                 ToEnum(),
-                _defaultHints == null
-                    ? mappingHints
-                    : _defaultHints.With(mappingHints))
+#nullable enable
+                _defaultHints?.With(mappingHints) ?? mappingHints)
         {
         }
 

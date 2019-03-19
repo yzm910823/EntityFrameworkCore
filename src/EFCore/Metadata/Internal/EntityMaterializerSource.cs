@@ -11,12 +11,20 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class EntityMaterializerSource : IEntityMaterializerSource
     {
@@ -29,13 +37,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public virtual Expression CreateReadValueExpression(
             Expression valueBuffer,
             Type type,
-            int index,
-            IPropertyBase property)
+            int index)
             => Expression.Call(
                 TryReadValueMethod.MakeGenericMethod(type),
                 valueBuffer,
-                Expression.Constant(index),
-                Expression.Constant(property, typeof(IPropertyBase)));
+                Expression.Constant(index));
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -47,7 +53,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static TValue TryReadValue<TValue>(
-            in ValueBuffer valueBuffer, int index, IPropertyBase property)
+            in ValueBuffer valueBuffer, int index)
             => (TValue)valueBuffer[index];
 
         /// <summary>
@@ -132,27 +138,31 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 
             var indexerPropertyInfo = entityType.EFIndexerProperty();
 
-            blockExpressions.AddRange(
-                from property in properties
-                let targetMember =
+            foreach (var property in properties)
+            {
+                var memberInfo = property.GetMemberInfo(forConstruction: true, forSet: true);
+
+                var readValueExpression
+                    = property is IServiceProperty serviceProperty
+                        ? serviceProperty.GetParameterBinding().BindToParameter(bindingInfo)
+                        : CreateReadValueExpression(
+                            valueBufferExpression,
+                            memberInfo.GetMemberType(),
+                            indexMap?[property.GetIndex()] ?? property.GetIndex());
+
+                blockExpressions.Add(
                     property.IsIndexedProperty
-                        ? (Expression)Expression.MakeIndex(
-                            instanceVariable,
-                            indexerPropertyInfo,
-                            new List<Expression>() { Expression.Constant(property.Name) })
+                        ? Expression.Assign(
+                            Expression.MakeIndex(
+                                instanceVariable,
+                                indexerPropertyInfo,
+                                new[] { Expression.Constant(property.Name) }),
+                            readValueExpression)
                         : Expression.MakeMemberAccess(
                             instanceVariable,
-                            property.GetMemberInfo(forConstruction: true, forSet: true))
-                select
-                    Expression.Assign(
-                        targetMember,
-                        property is IServiceProperty
-                            ? ((IServiceProperty)property).GetParameterBinding().BindToParameter(bindingInfo)
-                            : CreateReadValueExpression(
-                                valueBufferExpression,
-                                targetMember.Type,
-                                indexMap?[property.GetIndex()] ?? property.GetIndex(),
-                                property)));
+                            memberInfo).Assign(
+                            readValueExpression));
+            }
 
             blockExpressions.Add(instanceVariable);
 

@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
 using Microsoft.EntityFrameworkCore.Query.Sql;
@@ -28,8 +29,9 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Sql.Internal
         public SqlServerQuerySqlGenerator(
             [NotNull] QuerySqlGeneratorDependencies dependencies,
             [NotNull] SelectExpression selectExpression,
-            bool rowNumberPagingEnabled)
-            : base(dependencies, selectExpression)
+            bool rowNumberPagingEnabled,
+            DiagnosticsLoggers loggers)
+            : base(dependencies, selectExpression, loggers)
         {
             if (rowNumberPagingEnabled)
             {
@@ -127,28 +129,6 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Sql.Internal
             return base.VisitSqlFunction(sqlFunctionExpression);
         }
 
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        protected override Expression ApplyExplicitCastToBoolInProjectionOptimization(Expression expression)
-        {
-            var aliasedProjection = expression as AliasExpression;
-            var expressionToProcess = aliasedProjection?.Expression ?? expression;
-
-            var updatedExpression = ExplicitCastToBool(expressionToProcess);
-
-            return aliasedProjection != null
-                ? new AliasExpression(aliasedProjection.Alias, updatedExpression)
-                : updatedExpression;
-        }
-
-        private static Expression ExplicitCastToBool(Expression expression)
-            => ((expression as BinaryExpression)?.NodeType == ExpressionType.Coalesce || expression.NodeType == ExpressionType.Constant)
-               && expression.Type.UnwrapNullableType() == typeof(bool)
-                ? new ExplicitCastExpression(expression, expression.Type)
-                : expression;
-
         private class RowNumberPagingExpressionVisitor : ExpressionVisitorBase
         {
             private const string RowNumberColumnName = "__RowNumber__";
@@ -159,8 +139,8 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Sql.Internal
                 return expression is ExistsExpression existsExpression
                     ? VisitExistExpression(existsExpression)
                     : expression is SelectExpression selectExpression
-                    ? VisitSelectExpression(selectExpression)
-                    : base.Visit(expression);
+                        ? VisitSelectExpression(selectExpression)
+                        : base.Visit(expression);
             }
 
             private static bool RequiresRowNumberPaging(SelectExpression selectExpression)

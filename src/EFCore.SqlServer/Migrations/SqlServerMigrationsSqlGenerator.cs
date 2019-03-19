@@ -18,11 +18,20 @@ using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Update.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations
 {
     /// <summary>
-    ///     SQL Server-specific implementation of <see cref="MigrationsSqlGenerator" />.
+    ///     <para>
+    ///         SQL Server-specific implementation of <see cref="MigrationsSqlGenerator" />.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class SqlServerMigrationsSqlGenerator : MigrationsSqlGenerator
     {
@@ -81,18 +90,17 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             Check.NotNull(operation, nameof(operation));
             Check.NotNull(builder, nameof(builder));
 
-            var dropDatabaseOperation = operation as SqlServerDropDatabaseOperation;
-            if (operation is SqlServerCreateDatabaseOperation createDatabaseOperation)
+            switch (operation)
             {
-                Generate(createDatabaseOperation, model, builder);
-            }
-            else if (dropDatabaseOperation != null)
-            {
-                Generate(dropDatabaseOperation, model, builder);
-            }
-            else
-            {
-                base.Generate(operation, model, builder);
+                case SqlServerCreateDatabaseOperation createDatabaseOperation:
+                    Generate(createDatabaseOperation, model, builder);
+                    break;
+                case SqlServerDropDatabaseOperation dropDatabaseOperation:
+                    Generate(dropDatabaseOperation, model, builder);
+                    break;
+                default:
+                    base.Generate(operation, model, builder);
+                    break;
             }
         }
 
@@ -1511,7 +1519,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
         /// <param name="builder"> The command builder to use to add the SQL fragment. </param>
         protected override void IndexOptions(CreateIndexOperation operation, IModel model, MigrationCommandListBuilder builder)
         {
-            if (operation[SqlServerAnnotationNames.Include] is IReadOnlyList<string> includeProperties && includeProperties.Count > 0)
+            if (operation[SqlServerAnnotationNames.Include] is IReadOnlyList<string> includeProperties
+                && includeProperties.Count > 0)
             {
                 builder.Append(" INCLUDE (");
                 for (var i = 0; i < includeProperties.Count; i++)
@@ -1523,6 +1532,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                         builder.Append(", ");
                     }
                 }
+
                 builder.Append(")");
             }
 

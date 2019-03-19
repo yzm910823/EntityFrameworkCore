@@ -1,7 +1,12 @@
-﻿using System.Linq;
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.TestModels.Northwind;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Query
@@ -116,7 +121,8 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""CustomerID""] = ""ALFKI"")
             await AssertSum<Customer, Customer>(
                 isAsync,
                 cs => cs.Where(c => c.CustomerID == "CENTC"),
-                selector: c => c.Orders.Sum(o => 5 + o.OrderDetails.Where(od => od.OrderID >= 10250 && od.OrderID <= 10300).Sum(od => od.ProductID)));
+                selector: c => c.Orders.Sum(
+                    o => 5 + o.OrderDetails.Where(od => od.OrderID >= 10250 && od.OrderID <= 10300).Sum(od => od.ProductID)));
 
             AssertSql(
                 @"SELECT c
@@ -129,7 +135,8 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""CustomerID""] = ""CENTC"")
             await AssertSum<Customer, Customer>(
                 isAsync,
                 cs => cs.Where(c => c.CustomerID == "CENTC"),
-                selector: c => c.Orders.Sum(o => 5 + o.OrderDetails.Where(od => od.OrderID >= 10250 && od.OrderID <= 10300).Min(od => od.ProductID)));
+                selector: c => c.Orders.Sum(
+                    o => 5 + o.OrderDetails.Where(od => od.OrderID >= 10250 && od.OrderID <= 10300).Min(od => od.ProductID)));
 
             AssertSql(
                 @"SELECT c
@@ -371,7 +378,8 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""CustomerID""] = ""ALFKI"")
             await AssertMin<Customer, Customer>(
                 isAsync,
                 cs => cs.Where(c => c.CustomerID == "CENTC"),
-                selector: c => c.Orders.Min(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Min(od => od.ProductID)));
+                selector: c =>
+                    c.Orders.Min(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Min(od => od.ProductID)));
 
             AssertSql(
                 @"SELECT c
@@ -384,7 +392,8 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""CustomerID""] = ""CENTC"")
             await AssertMin<Customer, Customer>(
                 isAsync,
                 cs => cs.Where(c => c.CustomerID == "CENTC"),
-                selector: c => c.Orders.Min(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Max(od => od.ProductID)));
+                selector: c =>
+                    c.Orders.Min(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Max(od => od.ProductID)));
 
             AssertSql(
                 @"SELECT c
@@ -438,9 +447,10 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""CustomerID""] = ""ALFKI"")
         public override async Task Max_over_nested_subquery_is_client_eval(bool isAsync)
         {
             await AssertMax<Customer, Customer>(
-               isAsync,
+                isAsync,
                 cs => cs.Where(c => c.CustomerID == "CENTC"),
-               selector: c => c.Orders.Max(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Max(od => od.ProductID)));
+                selector: c =>
+                    c.Orders.Max(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Max(od => od.ProductID)));
 
             AssertSql(
                 @"SELECT c
@@ -451,9 +461,10 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""CustomerID""] = ""CENTC"")
         public override async Task Max_over_sum_subquery_is_client_eval(bool isAsync)
         {
             await AssertMax<Customer, Customer>(
-               isAsync,
+                isAsync,
                 cs => cs.Where(c => c.CustomerID == "CENTC"),
-               selector: c => c.Orders.Max(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Sum(od => od.ProductID)));
+                selector: c =>
+                    c.Orders.Max(o => 5 + o.OrderDetails.Where(od => od.OrderID > 10250 && od.OrderID < 10300).Sum(od => od.ProductID)));
 
             AssertSql(
                 @"SELECT c
@@ -1087,7 +1098,7 @@ WHERE ((c[""Discriminator""] = ""OrderDetail"") AND ((c[""OrderID""] = 10248) AN
             base.Paging_operation_on_string_doesnt_issue_warning();
 
             Assert.DoesNotContain(
-                CoreStrings.LogFirstWithoutOrderByAndFilter.GenerateMessage(
+                CoreStrings.LogFirstWithoutOrderByAndFilter(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                     "(from char <generated>_1 in [c].CustomerID select [<generated>_1]).FirstOrDefault()"),
                 Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }

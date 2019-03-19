@@ -3,26 +3,32 @@
 
 using System.Data.Common;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class SqliteRelationalConnection : RelationalConnection, ISqliteRelationalConnection
     {
         private readonly IRawSqlCommandBuilder _rawSqlCommandBuilder;
         private readonly bool _loadSpatialite;
-        private readonly bool _enforceForeignKeys = true;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -41,7 +47,15 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
             if (optionsExtension != null)
             {
                 _loadSpatialite = optionsExtension.LoadSpatialite;
-                _enforceForeignKeys = optionsExtension.EnforceForeignKeys;
+                if (_loadSpatialite)
+                {
+                    var relationalOptions = RelationalOptionsExtension.Extract(dependencies.ContextOptions);
+                    if (relationalOptions.Connection != null)
+                    {
+                        // TODO: Provide a better hook to do this for both external connections and ones created by EF
+                        SpatialiteLoader.Load((SqliteConnection)relationalOptions.Connection);
+                    }
+                }
             }
         }
 
@@ -49,70 +63,23 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected override DbConnection CreateDbConnection() => new SqliteConnection(ConnectionString);
+        protected override DbConnection CreateDbConnection()
+        {
+            var connection = new SqliteConnection(ConnectionString);
+
+            if (_loadSpatialite)
+            {
+                SpatialiteLoader.Load(connection);
+            }
+
+            return connection;
+        }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public override bool IsMultipleActiveResultSetsEnabled => true;
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public override bool Open(bool errorsExpected = false)
-        {
-            if (base.Open(errorsExpected))
-            {
-                LoadSpatialite();
-                EnableForeignKeys();
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public override async Task<bool> OpenAsync(CancellationToken cancellationToken, bool errorsExpected = false)
-        {
-            if (await base.OpenAsync(cancellationToken, errorsExpected))
-            {
-                LoadSpatialite();
-                EnableForeignKeys();
-                return true;
-            }
-
-            return false;
-        }
-
-        private void LoadSpatialite()
-        {
-            if (!_loadSpatialite)
-            {
-                return;
-            }
-
-            var connection = (SqliteConnection)DbConnection;
-            connection.EnableExtensions();
-            SpatialiteLoader.Load(DbConnection);
-            connection.EnableExtensions(false);
-        }
-
-        private void EnableForeignKeys()
-        {
-            if (_enforceForeignKeys)
-            {
-                _rawSqlCommandBuilder.Build("PRAGMA foreign_keys=ON;").ExecuteNonQuery(this);
-            }
-            else
-            {
-                _rawSqlCommandBuilder.Build("PRAGMA foreign_keys=OFF;").ExecuteNonQuery(this);
-            }
-        }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

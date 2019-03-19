@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -161,10 +160,12 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
             Check.NotNull(queryModel, nameof(queryModel));
 
-            using (QueryCompilationContext.Logger.Logger.BeginScope(this))
+            var logger = QueryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>();
+
+            using (logger.Logger.BeginScope(this))
             {
                 QueryCompilationContext.IsAsyncQuery = false;
-                QueryCompilationContext.Logger.QueryModelCompiling(queryModel);
+                logger.QueryModelCompiling(queryModel);
 
                 _blockTaskExpressions = false;
 
@@ -196,10 +197,12 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
             Check.NotNull(queryModel, nameof(queryModel));
 
-            using (QueryCompilationContext.Logger.Logger.BeginScope(this))
+            var logger = QueryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>();
+
+            using (logger.Logger.BeginScope(this))
             {
                 QueryCompilationContext.IsAsyncQuery = true;
-                QueryCompilationContext.Logger.QueryModelCompiling(queryModel);
+                logger.QueryModelCompiling(queryModel);
 
                 _blockTaskExpressions = false;
 
@@ -230,7 +233,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                         .MakeGenericMethod(_expression.Type.GetSequenceType()),
                     _expression,
                     Expression.Constant(QueryCompilationContext.ContextType),
-                    Expression.Constant(QueryCompilationContext.Logger),
+                    Expression.Constant(QueryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>()),
                     QueryContextParameter);
 
         /// <summary>
@@ -291,6 +294,8 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
             Check.NotNull(queryModel, nameof(queryModel));
 
+            var logger = QueryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>();
+
             queryModel.TransformExpressions(
                 new DuplicateQueryModelIdentifyingExpressionVisitor(_queryCompilationContext).Visit);
 
@@ -302,7 +307,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             var eagerLoadingExpressionVisitor = _eagerLoadingExpressionVisitorFactory
                 .Create(_queryCompilationContext, _querySourceTracingExpressionVisitorFactory);
             eagerLoadingExpressionVisitor.VisitQueryModel(queryModel);
-            new NondeterministicResultCheckingVisitor(QueryCompilationContext.Logger, this).VisitQueryModel(queryModel);
+            new NondeterministicResultCheckingVisitor(logger, this).VisitQueryModel(queryModel);
 
             OnBeforeNavigationRewrite(queryModel);
 
@@ -348,7 +353,7 @@ namespace Microsoft.EntityFrameworkCore.Query
 
             // Log results
 
-            QueryCompilationContext.Logger.QueryModelOptimized(queryModel);
+            logger.QueryModelOptimized(queryModel);
         }
 
         /// <summary>
@@ -644,11 +649,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                                 .MakeGenericMethod(outputExpression.Type)
                                 .Invoke(
                                     null,
-                                    new object[]
-                                    {
-                                        entityTrackingInfos,
-                                        outputExpression
-                                    })));
+                                    new object[] { entityTrackingInfos, outputExpression })));
             }
         }
 
@@ -685,7 +686,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                     .OfType<TrackingResultOperator>()
                     .LastOrDefault();
 
-            return !_modelExpressionApplyingExpressionVisitor.IsViewTypeQuery
+            return !_modelExpressionApplyingExpressionVisitor.IsKeylessQuery
                    && !(queryModel.GetOutputDataInfo() is StreamedScalarValueInfo)
                    && (QueryCompilationContext.TrackQueryResults || lastTrackingModifier != null)
                    && (lastTrackingModifier?.IsTracking != false);
@@ -743,7 +744,8 @@ namespace Microsoft.EntityFrameworkCore.Query
             }
             finally
             {
-                QueryCompilationContext.Logger.QueryExecutionPlanned(_expressionPrinter, queryExecutorExpression);
+                QueryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>()
+                    .QueryExecutionPlanned(_expressionPrinter, queryExecutorExpression);
             }
         }
 
@@ -1181,11 +1183,11 @@ namespace Microsoft.EntityFrameworkCore.Query
                 = subQueryModel?.MainFromClause.FromExpression.TryGetReferencedQuerySource();
 
             return queryModel.BodyClauses.ElementAtOrDefault(index - 1) is GroupJoinClause groupJoinClause
-                && groupJoinClause == referencedQuerySource
-                && queryModel.CountQuerySourceReferences(groupJoinClause) == 1
-                && subQueryModel.BodyClauses.Count == 0
-                && subQueryModel.ResultOperators.Count == 1
-                && subQueryModel.ResultOperators[0] is DefaultIfEmptyResultOperator
+                   && groupJoinClause == referencedQuerySource
+                   && queryModel.CountQuerySourceReferences(groupJoinClause) == 1
+                   && subQueryModel.BodyClauses.Count == 0
+                   && subQueryModel.ResultOperators.Count == 1
+                   && subQueryModel.ResultOperators[0] is DefaultIfEmptyResultOperator
                 ? true
                 : false;
         }
@@ -1231,8 +1233,9 @@ namespace Microsoft.EntityFrameworkCore.Query
                  || !(selectClause.Selector is QuerySourceReferenceExpression))
                 && !queryModel.ResultOperators
                     .Select(ro => ro.GetType())
-                    .Any(t => t == typeof(GroupResultOperator)
-                           || t == typeof(AllResultOperator)))
+                    .Any(
+                        t => t == typeof(GroupResultOperator)
+                             || t == typeof(AllResultOperator)))
             {
                 var asyncSelector = selector;
                 var taskLiftingExpressionVisitor = new TaskLiftingExpressionVisitor();
@@ -1465,10 +1468,10 @@ namespace Microsoft.EntityFrameworkCore.Query
                     && LinqOperatorProvider is AsyncLinqOperatorProvider asyncLinqOperatorProvider)
                 {
                     return Expression.Call(
-                            asyncLinqOperatorProvider
-                                .ToAsyncEnumerable
-                                .MakeGenericMethod(elementType),
-                            expression);
+                        asyncLinqOperatorProvider
+                            .ToAsyncEnumerable
+                            .MakeGenericMethod(elementType),
+                        expression);
                 }
             }
 
@@ -1495,7 +1498,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             return BindMethodCallExpression(
                 methodCallExpression,
                 (property, _)
-                    => BindReadValueMethod(methodCallExpression.Type, expression, property.GetIndex(), property));
+                    => BindReadValueMethod(methodCallExpression.Type, expression, property.GetIndex()));
         }
 
         /// <summary>
@@ -1517,7 +1520,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                 memberExpression,
                 null,
                 (property, _)
-                    => BindReadValueMethod(memberExpression.Type, expression, property.GetIndex(), property));
+                    => BindReadValueMethod(memberExpression.Type, expression, property.GetIndex()));
         }
 
         /// <summary>
@@ -1526,21 +1529,19 @@ namespace Microsoft.EntityFrameworkCore.Query
         /// <param name="memberType"> Type of the member. </param>
         /// <param name="expression"> The target expression. </param>
         /// <param name="index"> A value buffer index. </param>
-        /// <param name="property">The property being bound.</param>
         /// <returns>
         ///     A value buffer read expression.
         /// </returns>
         public virtual Expression BindReadValueMethod(
             [NotNull] Type memberType,
             [NotNull] Expression expression,
-            int index,
-            [CanBeNull] IProperty property = null)
+            int index)
         {
             Check.NotNull(memberType, nameof(memberType));
             Check.NotNull(expression, nameof(expression));
 
             return _entityMaterializerSource
-                .CreateReadValueExpression(expression, memberType, index, property);
+                .CreateReadValueExpression(expression, memberType, index);
         }
 
         /// <summary>

@@ -158,7 +158,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
                 // collection navigation is only null if its parent entity is null (null propagation thru navigation)
                 // it is probable that user wanted to see if the collection is (not) empty
                 // log warning suggesting to use Any() instead.
-                _queryCompilationContext.Logger
+                _queryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>()
                     .PossibleUnintendedCollectionNavigationNullComparisonWarning(properties);
 
                 return Visit(
@@ -228,7 +228,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
 
         private bool IsInvalidSubQueryExpression(Expression expression)
             => expression is SubQueryExpression subQuery
-                && _queryCompilationContext.DuplicateQueryModels.Contains(subQuery.QueryModel);
+               && _queryCompilationContext.DuplicateQueryModels.Contains(subQuery.QueryModel);
 
         private Expression RewriteEntityEquality(ExpressionType nodeType, Expression left, Expression right)
         {
@@ -248,7 +248,8 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
                 if (leftNavigation.Equals(rightNavigation))
                 {
                     // Log a warning that comparing 2 collections causes reference comparison
-                    _queryCompilationContext.Logger.PossibleUnintendedReferenceComparisonWarning(left, right);
+                    _queryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>()
+                        .PossibleUnintendedReferenceComparisonWarning(left, right);
 
                     return Visit(
                         Expression.MakeBinary(
@@ -281,8 +282,8 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
             // Skipping composite key with subquery since it requires to copy subquery
             // which would cause same subquery to be visited twice
             return keyProperties.Count > 1
-                && (left.RemoveConvert() is SubQueryExpression
-                    || right.RemoveConvert() is SubQueryExpression)
+                   && (left.RemoveConvert() is SubQueryExpression
+                       || right.RemoveConvert() is SubQueryExpression)
                 ? null
                 : Expression.MakeBinary(
                     nodeType,
@@ -310,10 +311,10 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
 
         private static Expression UnwrapLastNavigation(Expression expression)
             => (expression as MemberExpression)?.Expression
-                ?? (expression is MethodCallExpression methodCallExpression
-                    && methodCallExpression.Method.IsEFPropertyMethod()
-                    ? methodCallExpression.Arguments[0]
-                    : null);
+               ?? (expression is MethodCallExpression methodCallExpression
+                   && methodCallExpression.Method.IsEFPropertyMethod()
+                   ? methodCallExpression.Arguments[0]
+                   : null);
 
         private static Expression CreateKeyAccessExpression(
             Expression target,

@@ -9,12 +9,21 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class ChangeDetector : IChangeDetector
     {
@@ -118,14 +127,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         {
             _logger.DetectChangesStarting(stateManager.Context);
 
-            foreach (var entry in stateManager.Entries.Where(
-                e => e.EntityState != EntityState.Detached
-                     && e.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot).ToList())
+            foreach (var entry in stateManager.ToList()) // Might be too big, but usually _all_ entities are using Snapshot tracking
+
             {
-                // State might change while detecting changes on other entries
-                if (entry.EntityState != EntityState.Detached)
+                if (entry.EntityType.GetChangeTrackingStrategy() == ChangeTrackingStrategy.Snapshot
+                    && entry.EntityState != EntityState.Detached)
                 {
-                    DetectChanges(entry);
+                    LocalDetectChanges(entry);
                 }
             }
 
@@ -137,6 +145,29 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual void DetectChanges(InternalEntityEntry entry)
+            => DetectChanges(entry, new HashSet<InternalEntityEntry> { entry });
+
+        private void DetectChanges(InternalEntityEntry entry, HashSet<InternalEntityEntry> visited)
+        {
+            if (entry.EntityState != EntityState.Detached)
+            {
+                foreach (var foreignKey in entry.EntityType.GetForeignKeys())
+                {
+                    var principalEntry = entry.StateManager.GetPrincipal(entry, foreignKey);
+
+                    if (principalEntry != null
+                        && !visited.Contains(principalEntry))
+                    {
+                        visited.Add(principalEntry);
+                        DetectChanges(principalEntry, visited);
+                    }
+                }
+
+                LocalDetectChanges(entry);
+            }
+        }
+
+        private void LocalDetectChanges(InternalEntityEntry entry)
         {
             var entityType = entry.EntityType;
 

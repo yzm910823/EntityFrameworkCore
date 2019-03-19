@@ -2,11 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.TestUtilities
@@ -25,14 +26,14 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
         protected override void UseProviderOptions(DbContextOptionsBuilder optionsBuilder)
             => optionsBuilder.UseSqlServer(new SqlConnection("Database=DummyDatabase"));
 
-        public override IModelValidator CreateModelValidator(
-            DiagnosticsLogger<DbLoggerCategory.Model> modelLogger,
-            DiagnosticsLogger<DbLoggerCategory.Model.Validation> validationLogger)
+        public override IModelValidator CreateModelValidator()
             => new SqlServerModelValidator(
-                new ModelValidatorDependencies(validationLogger, modelLogger),
+                new ModelValidatorDependencies(),
                 new RelationalModelValidatorDependencies(
                     new SqlServerTypeMappingSource(
                         TestServiceFactory.Instance.Create<TypeMappingSourceDependencies>(),
                         TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>())));
+
+        public override LoggingDefinitions LoggingDefinitions { get; } = new SqlServerLoggingDefinitions();
     }
 }

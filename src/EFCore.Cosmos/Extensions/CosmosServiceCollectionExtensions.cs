@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Cosmos.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Query.Internal;
+using Microsoft.EntityFrameworkCore.Cosmos.Query.Sql;
+using Microsoft.EntityFrameworkCore.Cosmos.Query.Sql.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
@@ -26,7 +28,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             var builder = new EntityFrameworkServicesBuilder(serviceCollection)
                 .TryAdd<IDatabaseProvider, DatabaseProvider<CosmosDbOptionsExtension>>()
-                .TryAdd<IDatabase, CosmosDatabase>()
+                .TryAdd<IDatabase, CosmosDatabaseWrapper>()
                 .TryAdd<IExecutionStrategyFactory, CosmosExecutionStrategyFactory>()
                 .TryAdd<IDbContextTransactionManager, CosmosTransactionManager>()
                 .TryAdd<IModelCustomizer, CosmosModelCustomizer>()
@@ -40,8 +42,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 .TryAdd<ITypeMappingSource, CosmosTypeMappingSource>()
                 .TryAddProviderSpecificServices(
                     b => b
-                        .TryAddScoped<CosmosClient, CosmosClient>()
-
+                        .TryAddScoped<CosmosClientWrapper, CosmosClientWrapper>()
+                        .TryAddScoped<ISqlGeneratorFactory, CosmosSqlGeneratorFactory>()
                 );
 
             builder.TryAddCoreServices();

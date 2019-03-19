@@ -14,19 +14,17 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
 {
     public class TestRelationalCommandBuilderFactory : IRelationalCommandBuilderFactory
     {
-        private readonly IDiagnosticsLogger<DbLoggerCategory.Database.Command> _logger;
         private readonly IRelationalTypeMappingSource _typeMappingSource;
 
         public TestRelationalCommandBuilderFactory(
-            IDiagnosticsLogger<DbLoggerCategory.Database.Command> logger,
             IRelationalTypeMappingSource typeMappingSource)
         {
-            _logger = logger;
             _typeMappingSource = typeMappingSource;
         }
 
-        public virtual IRelationalCommandBuilder Create()
-            => new TestRelationalCommandBuilder(_logger, _typeMappingSource);
+        public virtual IRelationalCommandBuilder Create(
+            IDiagnosticsLogger<DbLoggerCategory.Database.Command> logger)
+            => new TestRelationalCommandBuilder(logger, _typeMappingSource);
 
         private class TestRelationalCommandBuilder : IRelationalCommandBuilder
         {
@@ -83,7 +81,8 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
             }
 
             public Task<int> ExecuteNonQueryAsync(
-                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = new CancellationToken())
+                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                CancellationToken cancellationToken = new CancellationToken())
             {
                 var errorNumber = PreExecution(connection);
 
@@ -113,7 +112,8 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
             }
 
             public async Task<object> ExecuteScalarAsync(
-                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = new CancellationToken())
+                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                CancellationToken cancellationToken = new CancellationToken())
             {
                 var errorNumber = PreExecution(connection);
 
@@ -144,7 +144,8 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
             }
 
             public async Task<RelationalDataReader> ExecuteReaderAsync(
-                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = new CancellationToken())
+                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                CancellationToken cancellationToken = new CancellationToken())
             {
                 var errorNumber = PreExecution(connection);
 

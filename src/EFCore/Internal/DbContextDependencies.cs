@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Internal
 {
@@ -16,6 +17,12 @@ namespace Microsoft.EntityFrameworkCore.Internal
     ///     <para>
     ///         This type supports the Entity Framework Core infrastructure and is not intended to be used
     ///         directly from your code. This type may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
     ///     </para>
     /// </summary>
     public sealed class DbContextDependencies : IDbContextDependencies
@@ -28,24 +35,22 @@ namespace Microsoft.EntityFrameworkCore.Internal
             [NotNull] ICurrentDbContext currentContext,
             [NotNull] IChangeDetector changeDetector,
             [NotNull] IDbSetSource setSource,
-            [NotNull] IDbQuerySource querySource,
             [NotNull] IEntityFinderSource entityFinderSource,
             [NotNull] IEntityGraphAttacher entityGraphAttacher,
             [NotNull] IModel model,
             [NotNull] IAsyncQueryProvider queryProvider,
             [NotNull] IStateManager stateManager,
             [NotNull] IDiagnosticsLogger<DbLoggerCategory.Update> updateLogger,
-            [NotNull] IDiagnosticsLogger<DbLoggerCategory.Infrastructure> infrastuctureLogger)
+            [NotNull] IDiagnosticsLogger<DbLoggerCategory.Infrastructure> infrastructureLogger)
         {
             ChangeDetector = changeDetector;
             SetSource = setSource;
-            QuerySource = querySource;
             EntityGraphAttacher = entityGraphAttacher;
             Model = model;
             QueryProvider = queryProvider;
             StateManager = stateManager;
             UpdateLogger = updateLogger;
-            InfrastructureLogger = infrastuctureLogger;
+            InfrastructureLogger = infrastructureLogger;
             EntityFinderFactory = new EntityFinderFactory(entityFinderSource, stateManager, setSource, currentContext.Context);
         }
 
@@ -60,12 +65,6 @@ namespace Microsoft.EntityFrameworkCore.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public IDbSetSource SetSource { get; }
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public IDbQuerySource QuerySource { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

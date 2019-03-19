@@ -5,16 +5,24 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Infrastructure
 {
     /// <summary>
-    ///     The validator that enforces rules common for all relational providers.
+    ///     <para>
+    ///         The validator that enforces rules common for all relational providers.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class RelationalModelValidator : ModelValidator
     {
@@ -42,22 +50,23 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     Validates a model, throwing an exception if any errors are found.
         /// </summary>
         /// <param name="model"> The model to validate. </param>
-        public override void Validate(IModel model)
+        /// <param name="loggers"> Loggers to use. </param>
+        public override void Validate(IModel model, DiagnosticsLoggers loggers)
         {
-            base.Validate(model);
+            base.Validate(model, loggers);
 
-            ValidateSharedTableCompatibility(model);
-            ValidateInheritanceMapping(model);
-            ValidateDefaultValuesOnKeys(model);
-            ValidateBoolsWithDefaults(model);
-            ValidateDbFunctions(model);
+            ValidateSharedTableCompatibility(model, loggers);
+            ValidateInheritanceMapping(model, loggers);
+            ValidateDefaultValuesOnKeys(model, loggers);
+            ValidateBoolsWithDefaults(model, loggers);
+            ValidateDbFunctions(model, loggers);
         }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateDbFunctions([NotNull] IModel model)
+        protected virtual void ValidateDbFunctions([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             foreach (var dbFunction in model.Relational().DbFunctions)
             {
@@ -98,9 +107,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateBoolsWithDefaults([NotNull] IModel model)
+        protected virtual void ValidateBoolsWithDefaults([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             Check.NotNull(model, nameof(model));
+
+            var logger = loggers.GetLogger<DbLoggerCategory.Model.Validation>();
 
             foreach (var property in model.GetEntityTypes().SelectMany(e => e.GetDeclaredProperties()))
             {
@@ -109,7 +120,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                     && (IsNotNullAndFalse(property.Relational().DefaultValue)
                         || property.Relational().DefaultValueSql != null))
                 {
-                    Dependencies.Logger.BoolWithDefaultWarning(property);
+                    logger.BoolWithDefaultWarning(property);
                 }
             }
         }
@@ -122,13 +133,15 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateDefaultValuesOnKeys([NotNull] IModel model)
+        protected virtual void ValidateDefaultValuesOnKeys([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
+            var logger = loggers.GetLogger<DbLoggerCategory.Model.Validation>();
+
             foreach (var property in model.GetEntityTypes().SelectMany(
                     t => t.GetDeclaredKeys().SelectMany(k => k.Properties))
                 .Where(p => p.Relational().DefaultValue != null))
             {
-                Dependencies.Logger.ModelValidationKeyDefaultValueWarning(property);
+                logger.ModelValidationKeyDefaultValueWarning(property);
             }
         }
 
@@ -136,10 +149,10 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateSharedTableCompatibility([NotNull] IModel model)
+        protected virtual void ValidateSharedTableCompatibility([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             var tables = new Dictionary<string, List<IEntityType>>();
-            foreach (var entityType in model.GetEntityTypes().Where(et => !et.IsQueryType))
+            foreach (var entityType in model.GetEntityTypes().Where(et => et.FindPrimaryKey() != null))
             {
                 var annotations = entityType.Relational();
                 var tableName = Format(annotations.Schema, annotations.TableName);
@@ -157,11 +170,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             {
                 var mappedTypes = tableMapping.Value;
                 var tableName = tableMapping.Key;
-                ValidateSharedTableCompatibility(mappedTypes, tableName);
-                ValidateSharedColumnsCompatibility(mappedTypes, tableName);
-                ValidateSharedKeysCompatibility(mappedTypes, tableName);
-                ValidateSharedForeignKeysCompatibility(mappedTypes, tableName);
-                ValidateSharedIndexesCompatibility(mappedTypes, tableName);
+                ValidateSharedTableCompatibility(mappedTypes, tableName, loggers);
+                ValidateSharedColumnsCompatibility(mappedTypes, tableName, loggers);
+                ValidateSharedKeysCompatibility(mappedTypes, tableName, loggers);
+                ValidateSharedForeignKeysCompatibility(mappedTypes, tableName, loggers);
+                ValidateSharedIndexesCompatibility(mappedTypes, tableName, loggers);
             }
         }
 
@@ -170,7 +183,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual void ValidateSharedTableCompatibility(
-            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName)
+            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName, DiagnosticsLoggers loggers)
         {
             if (mappedTypes.Count == 1)
             {
@@ -269,7 +282,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual void ValidateSharedColumnsCompatibility(
-            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName)
+            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName, DiagnosticsLoggers loggers)
         {
             var propertyMappings = new Dictionary<string, IProperty>();
 
@@ -370,7 +383,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual void ValidateSharedForeignKeysCompatibility(
-            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName)
+            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName, DiagnosticsLoggers loggers)
         {
             var foreignKeyMappings = new Dictionary<string, IForeignKey>();
 
@@ -392,7 +405,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual void ValidateSharedIndexesCompatibility(
-            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName)
+            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName, DiagnosticsLoggers loggers)
         {
             var indexMappings = new Dictionary<string, IIndex>();
 
@@ -414,7 +427,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual void ValidateSharedKeysCompatibility(
-            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName)
+            [NotNull] IReadOnlyList<IEntityType> mappedTypes, [NotNull] string tableName, DiagnosticsLoggers loggers)
         {
             var keyMappings = new Dictionary<string, IKey>();
 
@@ -449,7 +462,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void ValidateInheritanceMapping([NotNull] IModel model)
+        protected virtual void ValidateInheritanceMapping([NotNull] IModel model, DiagnosticsLoggers loggers)
         {
             foreach (var rootEntityType in model.GetRootEntityTypes())
             {
@@ -459,11 +472,12 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             foreach (var entityType in model.GetEntityTypes())
             {
                 if (entityType.BaseType != null
-                    && entityType.IsQueryType
-                    && entityType[RelationalAnnotationNames.TableName] != null)
+                    && entityType[RelationalAnnotationNames.TableName] != null
+                    && ((EntityType)entityType).FindAnnotation(RelationalAnnotationNames.TableName).GetConfigurationSource()
+                        == ConfigurationSource.Explicit)
                 {
                     throw new InvalidOperationException(
-                        RelationalStrings.DerivedQueryTypeView(entityType.DisplayName(), entityType.BaseType.DisplayName()));
+                        RelationalStrings.DerivedTypeTable(entityType.DisplayName(), entityType.BaseType.DisplayName()));
                 }
             }
         }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -16,14 +17,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
 {
-
     public abstract class ModelCodeGeneratorTestBase
     {
         public static ConventionSet BuildNonValidatingConventionSet()
         {
             var serviceProvider = new ServiceCollection()
                 .AddEntityFrameworkSqlServer()
-                .AddDbContext<DbContext>(o => o.UseSqlServer("Server=."))
+                .AddDbContext<DbContext>(
+                    (p, o) =>
+                        o.UseSqlServer("Server=.")
+                            .UseInternalServiceProvider(p))
                 .BuildServiceProvider();
 
             using (var serviceScope = serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope())
@@ -33,7 +36,9 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
                     return new CompositeConventionSetBuilder(
                             context.GetService<IEnumerable<IConventionSetBuilder>>().ToList())
                         .AddConventions(
-                            context.GetService<ICoreConventionSetBuilder>().CreateConventionSet());
+                            context.GetService<ICoreConventionSetBuilder>().CreateConventionSet(
+                                new DiagnosticsLoggers(
+                                    context.GetService<IDiagnosticsLogger<DbLoggerCategory.Model>>())));
                 }
             }
         }
@@ -47,6 +52,7 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
             var modelBuilder = new ModelBuilder(BuildNonValidatingConventionSet());
             modelBuilder.Model.RemoveAnnotation(CoreAnnotationNames.ProductVersionAnnotation);
             buildModel(modelBuilder);
+            var _ = modelBuilder.Model.Scaffolding().EntityTypeErrors;
 
             var model = modelBuilder.FinalizeModel();
 

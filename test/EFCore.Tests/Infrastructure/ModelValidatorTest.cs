@@ -6,9 +6,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -50,7 +52,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             var keyProperty = entityType.AddProperty("Key", typeof(int));
             entityType.AddKey(keyProperty);
 
-            VerifyWarning(CoreStrings.LogShadowPropertyCreated.GenerateMessage("Key", "A"), model, LogLevel.Debug);
+            VerifyWarning(CoreStrings.LogShadowPropertyCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage("Key", "A"), model, LogLevel.Debug);
         }
 
         [Fact]
@@ -61,7 +63,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             var keyProperty = entityType.AddProperty("Key", typeof(int), ConfigurationSource.Convention);
             entityType.SetPrimaryKey(keyProperty);
 
-            VerifyWarning(CoreStrings.LogShadowPropertyCreated.GenerateMessage("Key", "A"), model, LogLevel.Debug);
+            VerifyWarning(CoreStrings.LogShadowPropertyCreated(new TestLogger<LoggingDefinitions>()).GenerateMessage("Key", "A"), model, LogLevel.Debug);
         }
 
         [Fact]
@@ -159,7 +161,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
 
             modelBuilder.Entity<A>().HasOne<A>().WithOne().IsRequired().HasForeignKey<A>(a => a.Id).HasPrincipalKey<A>(b => b.Id);
 
-            VerifyWarning(CoreStrings.LogRedundantForeignKey.GenerateMessage("{'Id'}", "A"), modelBuilder.Model, LogLevel.Warning);
+            VerifyWarning(CoreStrings.LogRedundantForeignKey(new TestLogger<LoggingDefinitions>()).GenerateMessage("{'Id'}", "A"), modelBuilder.Model, LogLevel.Warning);
         }
 
         [Fact]
@@ -472,7 +474,8 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             ownedTypeBuilder.PrimaryKey(ownershipBuilder.Metadata.Properties.Select(p => p.Name).ToList(), ConfigurationSource.Convention);
             var anotherEntityTypeBuilder = modelBuilder.Entity(typeof(AnotherSampleEntity), ConfigurationSource.Convention);
             anotherEntityTypeBuilder.PrimaryKey(new[] { nameof(AnotherSampleEntity.Id) }, ConfigurationSource.Convention);
-            anotherEntityTypeBuilder.Navigation(ownedTypeBuilder, nameof(AnotherSampleEntity.ReferencedEntity), ConfigurationSource.Convention)
+            anotherEntityTypeBuilder.Navigation(
+                    ownedTypeBuilder, nameof(AnotherSampleEntity.ReferencedEntity), ConfigurationSource.Convention)
                 .RelatedEntityTypes(anotherEntityTypeBuilder.Metadata, ownedTypeBuilder.Metadata, ConfigurationSource.Convention);
 
             VerifyError(
@@ -534,32 +537,15 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         }
 
         [Fact]
-        public virtual void Detects_ToQuery_on_derived_query_types()
+        public virtual void Detects_ToQuery_on_derived_keyless_types()
         {
             var modelBuilder = base.CreateConventionalModelBuilder();
             var context = new DbContext(new DbContextOptions<DbContext>());
-            modelBuilder.Query<Abstract>().ToQuery(() => context.Set<Abstract>());
-            modelBuilder.Query<Generic<int>>().ToQuery(() => context.Set<Generic<int>>());
+            modelBuilder.Entity<Abstract>().HasNoKey().ToQuery(() => context.Set<Abstract>());
+            modelBuilder.Entity<Generic<int>>().ToQuery(() => context.Set<Generic<int>>());
 
             VerifyError(
-                CoreStrings.DerivedQueryTypeDefiningQuery("Generic<int>", nameof(Abstract)),
-                modelBuilder.Model);
-        }
-
-        [Fact]
-        public virtual void Detects_keys_on_query_types()
-        {
-            var modelBuilder = base.CreateConventionalModelBuilder();
-            var context = new DbContext(new DbContextOptions<DbContext>());
-            var queryType = modelBuilder.Query<A>().Metadata;
-
-            if (queryType.GetKeys().Count() == 0)
-            {
-                queryType.AddKey(queryType.FindProperty(nameof(A.Id)));
-            }
-
-            VerifyError(
-                CoreStrings.QueryTypeWithKey("{'Id'}", nameof(A)),
+                CoreStrings.DerivedTypeDefiningQuery("Generic<int>", nameof(Abstract)),
                 modelBuilder.Model);
         }
 
@@ -618,7 +604,8 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         [Theory]
         [InlineData(ChangeTrackingStrategy.Snapshot)]
         [InlineData(ChangeTrackingStrategy.ChangedNotifications)]
-        public virtual void Passes_for_changed_only_entities_with_snapshot_or_changed_only_tracking(ChangeTrackingStrategy changeTrackingStrategy)
+        public virtual void Passes_for_changed_only_entities_with_snapshot_or_changed_only_tracking(
+            ChangeTrackingStrategy changeTrackingStrategy)
         {
             var model = CreateConventionlessModelBuilder().Model;
             var entityType = model.AddEntityType(typeof(ChangedOnlyEntity));
@@ -666,26 +653,28 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         public virtual void Passes_for_ignored_invalid_properties()
         {
             var modelBuilder = CreateConventionalModelBuilder();
-            modelBuilder.Entity<EntityWithInvalidProperties>(eb =>
-            {
-                eb.Ignore(e => e.NotImplemented);
+            modelBuilder.Entity<EntityWithInvalidProperties>(
+                eb =>
+                {
+                    eb.Ignore(e => e.NotImplemented);
 
-                eb.HasData(
-                    new EntityWithInvalidProperties
-                    {
-                        Id = -1
-                    });
+                    eb.HasData(
+                        new EntityWithInvalidProperties
+                        {
+                            Id = -1
+                        });
 
-                eb.HasData(
-                    new {
-                        Id = -2,
-                        NotImplemented = true,
-                        Static = 1,
-                        WriteOnly = 1,
-                        ReadOnly = 1,
-                        PrivateGetter = 1
-                    });
-            });
+                    eb.HasData(
+                        new
+                        {
+                            Id = -2,
+                            NotImplemented = true,
+                            Static = 1,
+                            WriteOnly = 1,
+                            ReadOnly = 1,
+                            PrivateGetter = 1
+                        });
+                });
 
             Validate(modelBuilder.Model);
 
@@ -750,12 +739,34 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         }
 
         [Fact]
+        public virtual void Passes_on_missing_required_store_generated_values_in_seeds()
+        {
+            var modelBuilder = CreateConventionalModelBuilder();
+            modelBuilder.Entity<A>(
+                e =>
+                {
+                    e.Property(a => a.P0).IsRequired().ValueGeneratedOnAddOrUpdate();
+                    e.HasData(
+                        new A
+                        {
+                            Id = 1
+                        });
+                });
+
+            Validate(modelBuilder.Model);
+        }
+
+        [Fact]
         public virtual void Detects_missing_key_values_in_seeds()
         {
             var entity = new NonSignedIntegerKeyEntity();
             var modelBuilder = CreateConventionalModelBuilder();
             modelBuilder.Entity<NonSignedIntegerKeyEntity>(e => e.HasData(entity));
 
+            Assert.Equal(
+                ValueGenerated.OnAdd,
+                modelBuilder.Model.FindEntityType(typeof(NonSignedIntegerKeyEntity)).FindProperty(nameof(NonSignedIntegerKeyEntity.Id))
+                    .ValueGenerated);
             VerifyError(
                 CoreStrings.SeedDatumDefaultValue(nameof(NonSignedIntegerKeyEntity), nameof(NonSignedIntegerKeyEntity.Id), entity.Id),
                 modelBuilder.Model);

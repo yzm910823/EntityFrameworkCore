@@ -8,8 +8,9 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite.Properties;
-using SQLitePCL;
 using Xunit;
+
+using static SQLitePCL.raw;
 
 namespace Microsoft.Data.Sqlite
 {
@@ -168,7 +169,7 @@ namespace Microsoft.Data.Sqlite
                 command.CommandText = "CREATE TABLE Data (Value); SELECT * FROM Data;";
                 var ex = Assert.Throws<SqliteException>(() => command.Prepare());
 
-                Assert.Equal(1, ex.SqliteErrorCode);
+                Assert.Equal(Resources.SqliteNativeError(SQLITE_ERROR, "no such table: Data"), ex.Message);
             }
         }
 
@@ -259,7 +260,7 @@ namespace Microsoft.Data.Sqlite
 
                 var ex = Assert.Throws<SqliteException>(() => command.ExecuteReader());
 
-                Assert.Equal(raw.SQLITE_ERROR, ex.SqliteErrorCode);
+                Assert.Equal(SQLITE_ERROR, ex.SqliteErrorCode);
             }
         }
 
@@ -424,11 +425,12 @@ namespace Microsoft.Data.Sqlite
             using (var connection = new SqliteConnection("Data Source=:memory:"))
             {
                 var command = connection.CreateCommand();
-                command.CommandText = "SELECT @Parameter;";
+                command.CommandText = "SELECT @Parameter, @Parameter2;";
+                command.Parameters.AddWithValue("@Parameter", 1);
                 connection.Open();
 
                 var ex = Assert.Throws<InvalidOperationException>(() => command.ExecuteScalar());
-                Assert.Equal(Resources.MissingParameters("@Parameter"), ex.Message);
+                Assert.Equal(Resources.MissingParameters("@Parameter2"), ex.Message);
             }
         }
 
@@ -720,23 +722,8 @@ namespace Microsoft.Data.Sqlite
                     var hasResult = reader.NextResult();
                     Assert.False(hasResult);
                 }
+
                 Assert.Equal(ConnectionState.Closed, connection.State);
-            }
-        }
-
-        [Theory]
-        [InlineData(CommandBehavior.KeyInfo)]
-        [InlineData(CommandBehavior.SchemaOnly)]
-        public void ExecuteReader_throws_for_unsupported_CommandBehavior(CommandBehavior behavior)
-        {
-            using (var connection = new SqliteConnection("Data Source=:memory:"))
-            {
-                var command = connection.CreateCommand();
-                command.CommandText = "SELECT 0;";
-                connection.Open();
-
-                var ex = Assert.Throws<ArgumentException>(() => command.ExecuteReader(behavior));
-                Assert.Equal(Resources.InvalidCommandBehavior(behavior), ex.Message);
             }
         }
 
@@ -752,45 +739,45 @@ namespace Microsoft.Data.Sqlite
             return Task.WhenAll(
                 Task.Run(
                     async () =>
+                    {
+                        using (var connection = new SqliteConnection(connectionString))
                         {
-                            using (var connection = new SqliteConnection(connectionString))
+                            connection.Open();
+                            if (extendedErrorCode)
                             {
-                                connection.Open();
-                                if (extendedErrorCode)
-                                {
-                                    raw.sqlite3_extended_result_codes(connection.Handle, 1);
-                                }
-
-                                connection.ExecuteNonQuery(
-                                    "CREATE TABLE Data (Value); INSERT INTO Data VALUES (0);");
-
-                                using (connection.ExecuteReader("SELECT * FROM Data;"))
-                                {
-                                    selectedSignal.Set();
-
-                                    await Task.Delay(1000);
-                                }
+                                sqlite3_extended_result_codes(connection.Handle, 1);
                             }
-                        }),
+
+                            connection.ExecuteNonQuery(
+                                "CREATE TABLE Data (Value); INSERT INTO Data VALUES (0);");
+
+                            using (connection.ExecuteReader("SELECT * FROM Data;"))
+                            {
+                                selectedSignal.Set();
+
+                                await Task.Delay(1000);
+                            }
+                        }
+                    }),
                 Task.Run(
                     () =>
+                    {
+                        using (var connection = new SqliteConnection(connectionString))
                         {
-                            using (var connection = new SqliteConnection(connectionString))
+                            connection.Open();
+                            if (extendedErrorCode)
                             {
-                                connection.Open();
-                                if (extendedErrorCode)
-                                {
-                                    raw.sqlite3_extended_result_codes(connection.Handle, 1);
-                                }
-
-                                selectedSignal.WaitOne();
-
-                                var command = connection.CreateCommand();
-                                command.CommandText = "DROP TABLE Data;";
-
-                                command.ExecuteNonQuery();
+                                sqlite3_extended_result_codes(connection.Handle, 1);
                             }
-                        }));
+
+                            selectedSignal.WaitOne();
+
+                            var command = connection.CreateCommand();
+                            command.CommandText = "DROP TABLE Data;";
+
+                            command.ExecuteNonQuery();
+                        }
+                    }));
         }
 
         [Fact]
@@ -805,37 +792,37 @@ namespace Microsoft.Data.Sqlite
                 await Task.WhenAll(
                     Task.Run(
                         async () =>
+                        {
+                            using (var connection = new SqliteConnection(connectionString))
                             {
-                                using (var connection = new SqliteConnection(connectionString))
+                                connection.Open();
+
+                                connection.ExecuteNonQuery(
+                                    "CREATE TABLE Data (Value); INSERT INTO Data VALUES (0);");
+
+                                using (connection.ExecuteReader("SELECT * FROM Data;"))
                                 {
-                                    connection.Open();
+                                    selectedSignal.Set();
 
-                                    connection.ExecuteNonQuery(
-                                        "CREATE TABLE Data (Value); INSERT INTO Data VALUES (0);");
-
-                                    using (connection.ExecuteReader("SELECT * FROM Data;"))
-                                    {
-                                        selectedSignal.Set();
-
-                                        await Task.Delay(1000);
-                                    }
+                                    await Task.Delay(1000);
                                 }
-                            }),
+                            }
+                        }),
                     Task.Run(
                         () =>
+                        {
+                            using (var connection = new SqliteConnection(connectionString))
                             {
-                                using (var connection = new SqliteConnection(connectionString))
-                                {
-                                    connection.Open();
+                                connection.Open();
 
-                                    selectedSignal.WaitOne();
+                                selectedSignal.WaitOne();
 
-                                    var command = connection.CreateCommand();
-                                    command.CommandText = "DROP TABLE Data;";
+                                var command = connection.CreateCommand();
+                                command.CommandText = "DROP TABLE Data;";
 
-                                    command.ExecuteNonQuery();
-                                }
-                            }));
+                                command.ExecuteNonQuery();
+                            }
+                        }));
             }
             finally
             {
@@ -877,6 +864,36 @@ namespace Microsoft.Data.Sqlite
                 var result = connection.ExecuteScalar<string>("PRAGMA journal_mode;");
 
                 Assert.NotNull(result);
+            }
+        }
+
+        [Fact]
+        public void ExecuteReader_works_when_subsequent_DML()
+        {
+            using (var connection = new SqliteConnection("Data Source=:memory:"))
+            {
+                connection.Open();
+                connection.ExecuteNonQuery(@"
+                    CREATE TABLE Test(Value);
+                    INSERT INTO Test VALUES(1), (2);");
+
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                    SELECT Value FROM Test;
+                    DELETE FROM Test";
+
+                using (var reader = command.ExecuteReader())
+                {
+                    var hasData = reader.Read();
+                    Assert.True(hasData);
+
+                    Assert.Equal(1L, reader.GetInt64(0));
+
+                    hasData = reader.Read();
+                    Assert.True(hasData);
+
+                    Assert.Equal(2L, reader.GetInt64(0));
+                }
             }
         }
     }

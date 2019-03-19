@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Extensions.Internal;
@@ -56,7 +55,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             Check.NotNull(linqOperatorProvider, nameof(linqOperatorProvider));
 
             Model = dependencies.Model;
-            Logger = dependencies.Logger;
+            Loggers = new DiagnosticsLoggers(dependencies.Logger, dependencies.CommandLogger);
 
             _entityQueryModelVisitorFactory = dependencies.EntityQueryModelVisitorFactory;
             _requiresMaterializationExpressionVisitorFactory = dependencies.RequiresMaterializationExpressionVisitorFactory;
@@ -134,12 +133,12 @@ namespace Microsoft.EntityFrameworkCore.Query
         public virtual IModel Model { get; }
 
         /// <summary>
-        ///     Gets the logger.
+        ///     Gets the loggers.
         /// </summary>
         /// <value>
-        ///     The logger.
+        ///     The loggers.
         /// </value>
-        public virtual IDiagnosticsLogger<DbLoggerCategory.Query> Logger { get; }
+        public virtual DiagnosticsLoggers Loggers { get; }
 
         /// <summary>
         ///     Gets the LINQ operator provider.
@@ -377,7 +376,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                     var entityQueryable = (IQueryable)constantExpression.Value;
                     var entityType = _model.FindEntityType(entityQueryable.ElementType);
 
-                    if (entityType?.IsQueryType == false
+                    if (entityType?.FindPrimaryKey() != null
                         && (_referencedEntityTypes > 0
                             || entityType.GetDerivedTypesInclusive().Any(et => et.ShadowPropertyCount() > 0)))
                     {

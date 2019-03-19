@@ -6,12 +6,20 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class SqliteTypeMappingSource : RelationalTypeMappingSource
     {
@@ -45,7 +53,7 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
                 { typeof(byte[]), _blob },
                 { typeof(bool), new BoolTypeMapping(IntegerTypeName) },
                 { typeof(byte), new ByteTypeMapping(IntegerTypeName) },
-                { typeof(char), new SqliteCharTypeMapping(IntegerTypeName) },
+                { typeof(char), new CharTypeMapping(IntegerTypeName) },
                 { typeof(int), new IntTypeMapping(IntegerTypeName) },
                 { typeof(long), _integer },
                 { typeof(sbyte), new SByteTypeMapping(IntegerTypeName) },
@@ -68,7 +76,7 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
                 { IntegerTypeName, _integer },
                 { RealTypeName, _real },
                 { BlobTypeName, _blob },
-                { TextTypeName, _text },
+                { TextTypeName, _text }
             };
 
         /// <summary>
@@ -122,16 +130,14 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Storage.Internal
 
         private readonly Func<string, RelationalTypeMapping>[] _typeRules =
         {
-            name => Contains(name, "INT") ? _integer : null,
-            name => Contains(name, "CHAR")
-                    || Contains(name, "CLOB")
-                    || Contains(name, "TEXT")
+            name => Contains(name, "INT") ? _integer : null, name => Contains(name, "CHAR")
+                                                                     || Contains(name, "CLOB")
+                                                                     || Contains(name, "TEXT")
                 ? _text
                 : null,
-            name => Contains(name, "BLOB") ? _blob : null,
-            name => Contains(name, "REAL")
-                    || Contains(name, "FLOA")
-                    || Contains(name, "DOUB")
+            name => Contains(name, "BLOB") ? _blob : null, name => Contains(name, "REAL")
+                                                                   || Contains(name, "FLOA")
+                                                                   || Contains(name, "DOUB")
                 ? _real
                 : null
         };

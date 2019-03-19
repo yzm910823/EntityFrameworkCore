@@ -3,7 +3,10 @@
 
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
 namespace Microsoft.EntityFrameworkCore.Query
@@ -115,7 +118,7 @@ WHERE [c].[City] = @__predicateTuple_Item2_0");
 
 SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
-WHERE @__predicate_0 = 1");
+WHERE @__predicate_0 = CAST(1 AS bit)");
         }
 
         public override async Task Where_simple_closure_via_query_cache(bool isAsync)
@@ -407,11 +410,11 @@ WHERE EXISTS (
 FROM [Customers] AS [c]
 WHERE (CASE
     WHEN [c].[CustomerID] = N'ALFKI'
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END | CASE
     WHEN [c].[CustomerID] = N'ANATR'
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
-END) = 1");
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END) = CAST(1 AS bit)");
         }
 
         public override async Task Where_bitwise_and(bool isAsync)
@@ -423,11 +426,11 @@ END) = 1");
 FROM [Customers] AS [c]
 WHERE (CASE
     WHEN [c].[CustomerID] = N'ALFKI'
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END & CASE
     WHEN [c].[CustomerID] = N'ANATR'
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
-END) = 1");
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END) = CAST(1 AS bit)");
         }
 
         public override async Task Where_bitwise_xor(bool isAsync)
@@ -504,10 +507,10 @@ WHERE EXISTS (
 
 SELECT [t].[CustomerID], [t].[Address], [t].[City], [t].[CompanyName], [t].[ContactName], [t].[ContactTitle], [t].[Country], [t].[Fax], [t].[Phone], [t].[PostalCode], [t].[Region]
 FROM (
-    SELECT TOP(@__p_0) [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-    FROM [Customers] AS [c]
-) AS [t]
-ORDER BY [t].[CustomerID]",
+    SELECT TOP(@__p_0) [c1].[CustomerID], [c1].[Address], [c1].[City], [c1].[CompanyName], [c1].[ContactName], [c1].[ContactTitle], [c1].[Country], [c1].[Fax], [c1].[Phone], [c1].[PostalCode], [c1].[Region]
+    FROM [Customers] AS [c1]
+    ORDER BY [c1].[CustomerID]
+) AS [t]",
                 //
                 @"@_outer_CustomerID='ALFKI' (Size = 5)
 
@@ -607,7 +610,9 @@ WHERE [e].[EmployeeID] = 1");
 FROM [Employees] AS [e]
 WHERE 0 = 1");
 
-            Assert.Contains(RelationalStrings.LogPossibleUnintendedUseOfEquals.GenerateMessage($"e.EmployeeID.Equals(Convert(__longPrm_0{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+            Assert.Contains(
+                RelationalStrings.LogPossibleUnintendedUseOfEquals(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                    $"e.EmployeeID.Equals(Convert(__longPrm_0{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }
 
         public override async Task Where_equals_using_int_overload_on_mismatched_types(bool isAsync)
@@ -635,9 +640,13 @@ WHERE 0 = 1",
 FROM [Employees] AS [e]
 WHERE 0 = 1");
 
-            Assert.Contains(RelationalStrings.LogPossibleUnintendedUseOfEquals.GenerateMessage($"__longPrm_0.Equals(Convert(e.ReportsTo{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+            Assert.Contains(
+                RelationalStrings.LogPossibleUnintendedUseOfEquals(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                    $"__longPrm_0.Equals(Convert(e.ReportsTo{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
 
-            Assert.Contains(RelationalStrings.LogPossibleUnintendedUseOfEquals.GenerateMessage($"e.ReportsTo.Equals(Convert(__longPrm_0{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+            Assert.Contains(
+                RelationalStrings.LogPossibleUnintendedUseOfEquals(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                    $"e.ReportsTo.Equals(Convert(__longPrm_0{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }
 
         public override async Task Where_equals_on_mismatched_types_nullable_long_nullable_int(bool isAsync)
@@ -653,9 +662,15 @@ WHERE 0 = 1",
 FROM [Employees] AS [e]
 WHERE 0 = 1");
 
-            Assert.Contains(RelationalStrings.LogPossibleUnintendedUseOfEquals.GenerateMessage($"__nullableLongPrm_0.Equals(Convert(e.ReportsTo{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+            Assert.Contains(
+                RelationalStrings.LogPossibleUnintendedUseOfEquals(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                    $"__nullableLongPrm_0.Equals(Convert(e.ReportsTo{ConvertParams}))"),
+                Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
 
-            Assert.Contains(RelationalStrings.LogPossibleUnintendedUseOfEquals.GenerateMessage($"e.ReportsTo.Equals(Convert(__nullableLongPrm_0{ConvertParams}))"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+            Assert.Contains(
+                RelationalStrings.LogPossibleUnintendedUseOfEquals(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                    $"e.ReportsTo.Equals(Convert(__nullableLongPrm_0{ConvertParams}))"),
+                Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }
 
         public override async Task Where_equals_on_mismatched_types_int_nullable_int(bool isAsync)
@@ -1088,7 +1103,7 @@ WHERE [t].[EmployeeID] = 5");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE [p].[Discontinued] = 1");
+WHERE [p].[Discontinued] = CAST(1 AS bit)");
         }
 
         public override async Task Where_bool_member_false(bool isAsync)
@@ -1098,7 +1113,7 @@ WHERE [p].[Discontinued] = 1");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE [p].[Discontinued] = 0");
+WHERE [p].[Discontinued] = CAST(0 AS bit)");
         }
 
         public override async Task Where_bool_client_side_negated(bool isAsync)
@@ -1118,7 +1133,7 @@ WHERE [p].[Discontinued] = 1");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE [p].[Discontinued] = 1");
+WHERE [p].[Discontinued] = CAST(1 AS bit)");
         }
 
         public override async Task Where_bool_member_shadow(bool isAsync)
@@ -1128,7 +1143,7 @@ WHERE [p].[Discontinued] = 1");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE [p].[Discontinued] = 1");
+WHERE [p].[Discontinued] = CAST(1 AS bit)");
         }
 
         public override async Task Where_bool_member_false_shadow(bool isAsync)
@@ -1138,7 +1153,7 @@ WHERE [p].[Discontinued] = 1");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE [p].[Discontinued] = 0");
+WHERE [p].[Discontinued] = CAST(0 AS bit)");
         }
 
         public override async Task Where_bool_member_equals_constant(bool isAsync)
@@ -1148,7 +1163,7 @@ WHERE [p].[Discontinued] = 0");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE [p].[Discontinued] = 1");
+WHERE [p].[Discontinued] = CAST(1 AS bit)");
         }
 
         public override async Task Where_bool_member_in_complex_predicate(bool isAsync)
@@ -1158,7 +1173,7 @@ WHERE [p].[Discontinued] = 1");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE (([p].[ProductID] > 100) AND ([p].[Discontinued] = 1)) OR ([p].[Discontinued] = 1)");
+WHERE (([p].[ProductID] > 100) AND ([p].[Discontinued] = CAST(1 AS bit))) OR ([p].[Discontinued] = CAST(1 AS bit))");
         }
 
         public override async Task Where_bool_member_compared_to_binary_expression(bool isAsync)
@@ -1170,7 +1185,7 @@ WHERE (([p].[ProductID] > 100) AND ([p].[Discontinued] = 1)) OR ([p].[Discontinu
 FROM [Products] AS [p]
 WHERE [p].[Discontinued] = CASE
     WHEN [p].[ProductID] > 50
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -1193,10 +1208,10 @@ WHERE [p].[Discontinued] = [p].[Discontinued]");
 FROM [Products] AS [p]
 WHERE CASE
     WHEN [p].[ProductID] > 50
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN [p].[ProductID] > 20
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -1209,7 +1224,7 @@ END");
 FROM [Products] AS [p]
 WHERE [p].[Discontinued] <> CASE
     WHEN [p].[ProductID] > 50
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -1222,7 +1237,7 @@ END");
 
 SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE @__prm_0 = 1");
+WHERE @__prm_0 = CAST(1 AS bit)");
         }
 
         public override async Task Where_bool_parameter_compared_to_binary_expression(bool isAsync)
@@ -1236,7 +1251,7 @@ SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID],
 FROM [Products] AS [p]
 WHERE CASE
     WHEN [p].[ProductID] > 50
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> @__prm_0");
         }
 
@@ -1252,9 +1267,9 @@ FROM [Products] AS [p]
 WHERE [p].[Discontinued] = CASE
     WHEN CASE
         WHEN [p].[ProductID] > 50
-        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+        THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
     END <> @__prm_0
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -1265,7 +1280,7 @@ END");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE ([p].[Discontinued] = 0) AND ([p].[ProductID] >= 20)");
+WHERE ([p].[Discontinued] = CAST(0 AS bit)) AND ([p].[ProductID] >= 20)");
         }
 
         public override async Task Where_de_morgan_and_optimizated(bool isAsync)
@@ -1275,7 +1290,7 @@ WHERE ([p].[Discontinued] = 0) AND ([p].[ProductID] >= 20)");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE ([p].[Discontinued] = 0) OR ([p].[ProductID] >= 20)");
+WHERE ([p].[Discontinued] = CAST(0 AS bit)) OR ([p].[ProductID] >= 20)");
         }
 
         public override async Task Where_complex_negated_expression_optimized(bool isAsync)
@@ -1285,7 +1300,7 @@ WHERE ([p].[Discontinued] = 0) OR ([p].[ProductID] >= 20)");
             AssertSql(
                 @"SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE (([p].[Discontinued] = 0) AND ([p].[ProductID] < 60)) AND ([p].[ProductID] > 30)");
+WHERE (([p].[Discontinued] = CAST(0 AS bit)) AND ([p].[ProductID] < 60)) AND ([p].[ProductID] > 30)");
         }
 
         public override async Task Where_short_member_comparison(bool isAsync)
@@ -1389,11 +1404,11 @@ WHERE (((CAST(@__p_0 AS nvarchar(max)) + [c].[CustomerID]) + CAST(@__j_1 AS nvar
             await base.Where_ternary_boolean_condition_true(isAsync);
 
             AssertSql(
-                @"@__flag_0='True'
+    @"@__flag_0='True'
 
 SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE ((@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@__flag_0 <> 1) AND ([p].[UnitsInStock] < CAST(20 AS smallint)))");
+WHERE ((@__flag_0 = CAST(1 AS bit)) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@__flag_0 <> CAST(1 AS bit)) AND ([p].[UnitsInStock] < CAST(20 AS smallint)))");
         }
 
         public override async Task Where_ternary_boolean_condition_false(bool isAsync)
@@ -1405,7 +1420,7 @@ WHERE ((@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@_
 
 SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE ((@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@__flag_0 <> 1) AND ([p].[UnitsInStock] < CAST(20 AS smallint)))");
+WHERE ((@__flag_0 = CAST(1 AS bit)) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@__flag_0 <> CAST(1 AS bit)) AND ([p].[UnitsInStock] < CAST(20 AS smallint)))");
         }
 
         public override async Task Where_ternary_boolean_condition_with_another_condition(bool isAsync)
@@ -1418,7 +1433,7 @@ WHERE ((@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@_
 
 SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE ([p].[ProductID] < @__productId_0) AND (((@__flag_1 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@__flag_1 <> 1) AND ([p].[UnitsInStock] < CAST(20 AS smallint))))");
+WHERE ([p].[ProductID] < @__productId_0) AND (((@__flag_1 = CAST(1 AS bit)) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))) OR ((@__flag_1 <> CAST(1 AS bit)) AND ([p].[UnitsInStock] < CAST(20 AS smallint))))");
         }
 
         public override async Task Where_ternary_boolean_condition_with_false_as_result_true(bool isAsync)
@@ -1430,7 +1445,7 @@ WHERE ([p].[ProductID] < @__productId_0) AND (((@__flag_1 = 1) AND ([p].[UnitsIn
 
 SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE (@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))");
+WHERE (@__flag_0 = CAST(1 AS bit)) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))");
         }
 
         public override async Task Where_ternary_boolean_condition_with_false_as_result_false(bool isAsync)
@@ -1442,7 +1457,7 @@ WHERE (@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))");
 
 SELECT [p].[ProductID], [p].[Discontinued], [p].[ProductName], [p].[SupplierID], [p].[UnitPrice], [p].[UnitsInStock]
 FROM [Products] AS [p]
-WHERE (@__flag_0 = 1) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))");
+WHERE (@__flag_0 = CAST(1 AS bit)) AND ([p].[UnitsInStock] >= CAST(20 AS smallint))");
         }
 
         public override async Task Where_compare_constructed_equal(bool isAsync)
@@ -1691,7 +1706,8 @@ WHERE (
         {
             await base.Time_of_day_datetime(isAsync);
 
-            AssertSql(@"SELECT CAST([c].[OrderDate] AS time)
+            AssertSql(
+                @"SELECT CAST([c].[OrderDate] AS time)
 FROM [Orders] AS [c]");
         }
 
@@ -1704,7 +1720,7 @@ FROM [Orders] AS [c]");
 
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
-WHERE @__p_0 = 1");
+WHERE @__p_0 = CAST(1 AS bit)");
         }
     }
 }

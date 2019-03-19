@@ -31,7 +31,8 @@ namespace Microsoft.EntityFrameworkCore
         {
             var options = Fixture.AddOptions(
                     new DbContextOptionsBuilder()
-                        .UseSqlServer(TestStore.ConnectionString, b => b.ApplyConfiguration().CommandTimeout(SqlServerTestStore.CommandTimeout)))
+                        .UseSqlServer(
+                            TestStore.ConnectionString, b => b.ApplyConfiguration().CommandTimeout(SqlServerTestStore.CommandTimeout)))
                 .UseInternalServiceProvider(Fixture.ServiceProvider);
 
             return new DbContext(options.Options);
@@ -45,8 +46,8 @@ namespace Microsoft.EntityFrameworkCore
             {
                 base.Seed(context);
 
-                context.Database.ExecuteSqlCommand("ALTER DATABASE [" + StoreName + "] SET ALLOW_SNAPSHOT_ISOLATION ON");
-                context.Database.ExecuteSqlCommand("ALTER DATABASE [" + StoreName + "] SET READ_COMMITTED_SNAPSHOT ON");
+                context.Database.ExecuteRawSql("ALTER DATABASE [" + StoreName + "] SET ALLOW_SNAPSHOT_ISOLATION ON");
+                context.Database.ExecuteRawSql("ALTER DATABASE [" + StoreName + "] SET READ_COMMITTED_SNAPSHOT ON");
             }
 
             public override void Reseed()
@@ -65,8 +66,7 @@ namespace Microsoft.EntityFrameworkCore
                 new SqlServerDbContextOptionsBuilder(
                         base.AddOptions(builder)
                             .ConfigureWarnings(
-                                w => w.Log(RelationalEventId.QueryClientEvaluationWarning)
-                                    .Log(CoreEventId.FirstWithoutOrderByAndFilterWarning)))
+                                w => w.Log(CoreEventId.FirstWithoutOrderByAndFilterWarning)))
                     .MaxBatchSize(1);
                 return builder;
             }

@@ -3,6 +3,7 @@
 
 using System.Linq.Expressions;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.Sql;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -22,22 +23,11 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.Sql.Internal
         /// </summary>
         public SqliteQuerySqlGenerator(
             [NotNull] QuerySqlGeneratorDependencies dependencies,
-            [NotNull] SelectExpression selectExpression)
-            : base(dependencies, selectExpression)
+            [NotNull] SelectExpression selectExpression,
+            DiagnosticsLoggers loggers)
+            : base(dependencies, selectExpression, loggers)
         {
         }
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        protected override string TypedTrueLiteral => "1";
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        protected override string TypedFalseLiteral => "0";
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

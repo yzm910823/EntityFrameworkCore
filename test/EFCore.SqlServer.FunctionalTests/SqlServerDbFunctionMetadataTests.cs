@@ -3,9 +3,12 @@
 
 using System;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Conventions.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
 namespace Microsoft.EntityFrameworkCore
@@ -29,7 +32,7 @@ namespace Microsoft.EntityFrameworkCore
 
             var dbFunction = modelBuilder.HasDbFunction(MethodFoo);
 
-            ((Model)modelBuilder.Model).Validate();
+            modelBuilder.FinalizeModel();
 
             Assert.Equal("dbo", dbFunction.Metadata.Schema);
         }
@@ -43,7 +46,7 @@ namespace Microsoft.EntityFrameworkCore
 
             var dbFunction = modelBuilder.HasDbFunction(MethodFoo).HasSchema("abc");
 
-            ((Model)modelBuilder.Model).Validate();
+            modelBuilder.FinalizeModel();
 
             Assert.Equal("abc", dbFunction.Metadata.Schema);
         }
@@ -57,7 +60,7 @@ namespace Microsoft.EntityFrameworkCore
 
             var dbFunction = modelBuilder.HasDbFunction(MethodFoo);
 
-            ((Model)modelBuilder.Model).Validate();
+            modelBuilder.FinalizeModel();
 
             Assert.Equal("qwerty", dbFunction.Metadata.Schema);
         }
@@ -66,7 +69,8 @@ namespace Microsoft.EntityFrameworkCore
         {
             var conventionset = new ConventionSet();
 
-            conventionset.ModelAnnotationChangedConventions.Add(new SqlServerDbFunctionConvention());
+            conventionset.ModelAnnotationChangedConventions.Add(
+                new SqlServerDbFunctionConvention(new TestLogger<DbLoggerCategory.Model, SqlServerLoggingDefinitions>()));
 
             return new ModelBuilder(conventionset);
         }

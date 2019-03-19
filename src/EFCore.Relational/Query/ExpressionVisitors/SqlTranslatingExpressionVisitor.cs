@@ -613,12 +613,14 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
             // if method is EFIndexer then we need to skip attempting to translate
             // the method call and fall through to binding the expression below
             // (this supports joining on an indexed property)
+            var compilationContext = _queryModelVisitor.QueryCompilationContext;
+
             var operand =
                 methodCallExpression.Method.IsEFIndexer()
-                ? null
-                :  _queryModelVisitor.QueryCompilationContext.Model.Relational().FindDbFunction(methodCallExpression.Method) != null
-                    ? methodCallExpression.Object
-                    : Visit(methodCallExpression.Object);
+                    ? null
+                    : compilationContext.Model.Relational().FindDbFunction(methodCallExpression.Method) != null
+                        ? methodCallExpression.Object
+                        : Visit(methodCallExpression.Object);
 
             if (operand != null
                 || methodCallExpression.Object == null)
@@ -642,7 +644,10 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                             ? Expression.Call(operand, methodCallExpression.Method, arguments)
                             : Expression.Call(methodCallExpression.Method, arguments);
 
-                    var translatedExpression = _methodCallTranslator.Translate(boundExpression, _queryModelVisitor.QueryCompilationContext.Model);
+                    var translatedExpression = _methodCallTranslator.Translate(
+                        boundExpression,
+                        compilationContext.Model,
+                        compilationContext.Loggers.GetLogger<DbLoggerCategory.Query>());
 
                     if (translatedExpression != null)
                     {
@@ -759,7 +764,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                     ?.GetProjectionForMemberInfo(memberExpression.Member);
 
                 return _topLevelPredicate != null
-                    && sql is AliasExpression aliasExpression
+                       && sql is AliasExpression aliasExpression
                     ? aliasExpression.Expression
                     : sql;
             }
@@ -855,12 +860,14 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
 
                     if (operand != null)
                     {
+                        var operandWithoutConvert = operand.RemoveConvert();
+
                         return _isTopLevelProjection
-                               && operand.Type.IsValueType
+                               && operandWithoutConvert.Type.IsValueType
                                && expression.Type.IsValueType
-                               && expression.Type.UnwrapNullableType() != operand.Type.UnwrapNullableType()
-                               && expression.Type.UnwrapEnumType() != operand.Type.UnwrapEnumType()
-                            ? (Expression)new ExplicitCastExpression(operand, expression.Type)
+                               && expression.Type.UnwrapNullableType() != operandWithoutConvert.Type.UnwrapNullableType()
+                               && expression.Type.UnwrapEnumType() != operandWithoutConvert.Type.UnwrapEnumType()
+                            ? (Expression)new ExplicitCastExpression(operandWithoutConvert, expression.Type)
                             : Expression.Convert(operand, expression.Type);
                     }
 
@@ -1098,18 +1105,18 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
         {
             switch (expression)
             {
-                case StringCompareExpression stringCompare:
-                    var newLeft = Visit(stringCompare.Left);
-                    var newRight = Visit(stringCompare.Right);
+                case ComparisonExpression compare:
+                    var newLeft = Visit(compare.Left);
+                    var newRight = Visit(compare.Right);
                     if (newLeft == null
                         || newRight == null)
                     {
                         return null;
                     }
 
-                    return newLeft != stringCompare.Left
-                           || newRight != stringCompare.Right
-                        ? new StringCompareExpression(stringCompare.Operator, newLeft, newRight)
+                    return newLeft != compare.Left
+                           || newRight != compare.Right
+                        ? new ComparisonExpression(compare.Operator, newLeft, newRight)
                         : expression;
 
                 case ExplicitCastExpression explicitCast:

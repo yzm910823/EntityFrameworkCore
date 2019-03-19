@@ -284,6 +284,16 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
 
                         break;
                     }
+                    case ExpressionType.Index:
+                    {
+                        var indexExpression = (IndexExpression)obj;
+
+                        hashCode += (hashCode * 397) ^ (indexExpression.Indexer?.GetHashCode() ?? 0);
+                        hashCode += (hashCode * 397) ^ GetHashCode(indexExpression.Object);
+                        hashCode += (hashCode * 397) ^ GetHashCode(indexExpression.Arguments);
+
+                        break;
+                    }
                     default:
                         throw new NotImplementedException();
                 }
@@ -317,7 +327,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
         /// </summary>
         public virtual bool SequenceEquals(IEnumerable<Expression> x, IEnumerable<Expression> y)
         {
-            if (x == null || y == null)
+            if (x == null
+                || y == null)
             {
                 return false;
             }
@@ -425,6 +436,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                         return CompareExtension(a, b);
                     case ExpressionType.Default:
                         return CompareDefault((DefaultExpression)a, (DefaultExpression)b);
+                    case ExpressionType.Index:
+                        return CompareIndex((IndexExpression)a, (IndexExpression)b);
                     default:
                         throw new NotImplementedException();
                 }
@@ -469,8 +482,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 }
 
                 return a.IsEntityQueryable()
-                    && b.IsEntityQueryable()
-                    && a.Value.GetType() == b.Value.GetType()
+                       && b.IsEntityQueryable()
+                       && a.Value.GetType() == b.Value.GetType()
                     ? true
                     : Equals(a.Value, b.Value);
             }
@@ -746,6 +759,11 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
 
             private bool CompareElementInit(ElementInit a, ElementInit b)
                 => Equals(a.AddMethod, b.AddMethod)
+                   && CompareExpressionList(a.Arguments, b.Arguments);
+
+            private bool CompareIndex(IndexExpression a, IndexExpression b)
+                => Equals(a.Indexer, b.Indexer)
+                   && Compare(a.Object, b.Object)
                    && CompareExpressionList(a.Arguments, b.Arguments);
 
             private class ScopedDictionary<TKey, TValue>

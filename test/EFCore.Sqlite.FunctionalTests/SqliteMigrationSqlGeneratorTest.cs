@@ -4,10 +4,10 @@
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Microsoft.EntityFrameworkCore.TestUtilities;
-using Xunit;
 using Microsoft.EntityFrameworkCore.Sqlite.Internal;
 using Microsoft.EntityFrameworkCore.Sqlite.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
+using Xunit;
 
 // ReSharper disable InconsistentNaming
 namespace Microsoft.EntityFrameworkCore
@@ -351,6 +351,7 @@ namespace Microsoft.EntityFrameworkCore
                     x =>
                     {
                         x.Property<string>("FullName");
+                        x.HasKey("FullName");
                         x.HasIndex("FullName").IsUnique().HasFilter(@"""Id"" > 2");
                     }),
                 new RenameIndexOperation

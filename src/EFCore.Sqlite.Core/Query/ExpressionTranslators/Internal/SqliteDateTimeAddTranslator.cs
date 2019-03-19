@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.ExpressionTranslators;
 
@@ -40,17 +41,20 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
         ///     Translates the given method call expression.
         /// </summary>
         /// <param name="methodCallExpression">The method call expression.</param>
+        /// <param name="logger"> The logger. </param>
         /// <returns>
         ///     A SQL expression representing the translated MethodCallExpression.
         /// </returns>
-        public virtual Expression Translate(MethodCallExpression methodCallExpression)
+        public virtual Expression Translate(
+            MethodCallExpression methodCallExpression,
+            IDiagnosticsLogger<DbLoggerCategory.Query> logger)
         {
             var method = methodCallExpression.Method;
 
-            Expression argument = null;
+            Expression modifier = null;
             if (Equals(method, _addMilliseconds))
             {
-                argument = Expression.Add(
+                modifier = Expression.Add(
                     new ExplicitCastExpression(
                         Expression.Divide(
                             methodCallExpression.Arguments[0],
@@ -63,7 +67,7 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
             }
             else if (Equals(method, _addTicks))
             {
-                argument = Expression.Add(
+                modifier = Expression.Add(
                     new ExplicitCastExpression(
                         Expression.Divide(
                             Expression.Convert(
@@ -76,7 +80,7 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
             }
             else if (_methodInfoToUnitSuffix.TryGetValue(method, out var unitSuffix))
             {
-                argument = Expression.Add(
+                modifier = Expression.Add(
                     new ExplicitCastExpression(
                         methodCallExpression.Arguments[0],
                         typeof(string)),
@@ -88,7 +92,7 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
                 return null;
             }
 
-            Debug.Assert(argument != null);
+            Debug.Assert(modifier != null);
 
             return new SqlFunctionExpression(
                 "rtrim",
@@ -100,15 +104,11 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
                         typeof(DateTime),
                         new Expression[]
                         {
-                            new SqlFunctionExpression(
-                                "strftime",
+                            SqliteExpression.Strftime(
                                 typeof(DateTime),
-                                new[]
-                                {
-                                    Expression.Constant("%Y-%m-%d %H:%M:%f"),
-                                    methodCallExpression.Object,
-                                    argument
-                                }),
+                                "%Y-%m-%d %H:%M:%f",
+                                methodCallExpression.Object,
+                                new[] { modifier }),
                             Expression.Constant("0")
                         }),
                     Expression.Constant(".")

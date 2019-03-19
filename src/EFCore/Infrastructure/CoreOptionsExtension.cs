@@ -41,11 +41,15 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         private int? _maxPoolSize;
         private long? _serviceProviderHash;
         private string _logFragment;
+        private bool _cacheServiceProvider = true;
 
         private WarningsConfiguration _warningsConfiguration
             = new WarningsConfiguration()
+                .TryWithExplicit(CoreEventId.ManyServiceProvidersCreatedWarning, WarningBehavior.Throw)
                 .TryWithExplicit(CoreEventId.LazyLoadOnDisposedContextWarning, WarningBehavior.Throw)
-                .TryWithExplicit(CoreEventId.DetachedLazyLoadingWarning, WarningBehavior.Throw);
+                .TryWithExplicit(CoreEventId.DetachedLazyLoadingWarning, WarningBehavior.Throw)
+                // This is relational client eval warning. Yes, this is ugly and error-prone, but it will be removed before 3.0 ships
+                .TryWithExplicit(CoreEventId.RelationalBaseId + 500, WarningBehavior.Throw);
 
         /// <summary>
         ///     Creates a new set of options with everything set to default values.
@@ -70,6 +74,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             _warningsConfiguration = copyFrom.WarningsConfiguration;
             _queryTrackingBehavior = copyFrom.QueryTrackingBehavior;
             _maxPoolSize = copyFrom.MaxPoolSize;
+            _cacheServiceProvider = copyFrom.ServiceProviderCachingEnabled;
 
             if (copyFrom._replacedServices != null)
             {
@@ -255,6 +260,21 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         }
 
         /// <summary>
+        ///     Creates a new instance with all options the same as for this instance, but with the given option changed.
+        ///     It is unusual to call this method directly. Instead use <see cref="DbContextOptionsBuilder" />.
+        /// </summary>
+        /// <param name="cacheServiceProvider"> The option to change. </param>
+        /// <returns> A new instance with the option changed. </returns>
+        public virtual CoreOptionsExtension WithCacheServiceProvider(bool cacheServiceProvider)
+        {
+            var clone = Clone();
+
+            clone._cacheServiceProvider = cacheServiceProvider;
+
+            return clone;
+        }
+
+        /// <summary>
         ///     The option set from the <see cref="DbContextOptionsBuilder.EnableSensitiveDataLogging" /> method.
         /// </summary>
         public virtual bool IsSensitiveDataLoggingEnabled => _sensitiveDataLoggingEnabled;
@@ -300,6 +320,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         public virtual QueryTrackingBehavior QueryTrackingBehavior => _queryTrackingBehavior;
 
         /// <summary>
+        ///     The option set from the <see cref="DbContextOptionsBuilder.EnableServiceProviderCaching" /> method.
+        /// </summary>
+        public virtual bool ServiceProviderCachingEnabled => _cacheServiceProvider;
+
+        /// <summary>
         ///     The options set from the <see cref="DbContextOptionsBuilder.ReplaceService{TService,TImplementation}" /> method.
         /// </summary>
         public virtual IReadOnlyDictionary<Type, Type> ReplacedServices => (IReadOnlyDictionary<Type, Type>)_replacedServices;
@@ -322,12 +347,6 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// <returns> False since no database provider is registered. </returns>
         public virtual bool ApplyServices(IServiceCollection services)
         {
-            var loggerFactory = GetLoggerFactory();
-            if (loggerFactory != null)
-            {
-                services.AddSingleton(loggerFactory);
-            }
-
             var memoryCache = GetMemoryCache();
             if (memoryCache != null)
             {
@@ -338,10 +357,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         }
 
         private IMemoryCache GetMemoryCache()
-            => MemoryCache ?? ApplicationServiceProvider?.GetService<IMemoryCache>();
-
-        private ILoggerFactory GetLoggerFactory()
-            => LoggerFactory ?? ApplicationServiceProvider?.GetService<ILoggerFactory>();
+            => MemoryCache;
 
         /// <summary>
         ///     Returns a hash code created from any options that would cause a new <see cref="IServiceProvider" />
@@ -352,8 +368,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         {
             if (_serviceProviderHash == null)
             {
-                var hashCode = GetLoggerFactory()?.GetHashCode() ?? 0L;
-                hashCode = (hashCode * 397) ^ (GetMemoryCache()?.GetHashCode() ?? 0L);
+                var hashCode = GetMemoryCache()?.GetHashCode() ?? 0L;
                 hashCode = (hashCode * 3) ^ _sensitiveDataLoggingEnabled.GetHashCode();
                 hashCode = (hashCode * 3) ^ _detailedErrorsEnabled.GetHashCode();
                 hashCode = (hashCode * 1073742113) ^ _warningsConfiguration.GetServiceProviderHashCode();
@@ -380,7 +395,6 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         {
             Check.NotNull(debugInfo, nameof(debugInfo));
 
-            debugInfo["Core:" + nameof(DbContextOptionsBuilder.UseLoggerFactory)] = (GetLoggerFactory()?.GetHashCode() ?? 0L).ToString(CultureInfo.InvariantCulture);
             debugInfo["Core:" + nameof(DbContextOptionsBuilder.UseMemoryCache)] = (GetMemoryCache()?.GetHashCode() ?? 0L).ToString(CultureInfo.InvariantCulture);
             debugInfo["Core:" + nameof(DbContextOptionsBuilder.EnableSensitiveDataLogging)] = _sensitiveDataLoggingEnabled.GetHashCode().ToString(CultureInfo.InvariantCulture);
             debugInfo["Core:" + nameof(DbContextOptionsBuilder.EnableDetailedErrors)] = _detailedErrorsEnabled.GetHashCode().ToString(CultureInfo.InvariantCulture);

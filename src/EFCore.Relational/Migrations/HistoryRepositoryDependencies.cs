@@ -3,10 +3,12 @@
 
 using System.Collections.Generic;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Migrations
 {
@@ -33,6 +35,12 @@ namespace Microsoft.EntityFrameworkCore.Migrations
     ///         dependency injection container. To create an instance with some dependent services replaced,
     ///         first resolve the object from the dependency injection container, then replace selected
     ///         services using the 'With...' methods. Do not call the constructor at any point in this process.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
     ///     </para>
     /// </summary>
     public sealed class HistoryRepositoryDependencies
@@ -64,6 +72,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
         /// <param name="coreConventionSetBuilder"> The core convention set to use when creating the model. </param>
         /// <param name="conventionSetBuilders"> The convention sets to use when creating the model. </param>
         /// <param name="typeMappingSource"> The type mapper. </param>
+        /// <param name="modelLogger"> The logger for model building events. </param>
         public HistoryRepositoryDependencies(
             [NotNull] IRelationalDatabaseCreator databaseCreator,
             [NotNull] IRawSqlCommandBuilder rawSqlCommandBuilder,
@@ -74,7 +83,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             [NotNull] ISqlGenerationHelper sqlGenerationHelper,
             [NotNull] ICoreConventionSetBuilder coreConventionSetBuilder,
             [NotNull] IEnumerable<IConventionSetBuilder> conventionSetBuilders,
-            [NotNull] IRelationalTypeMappingSource typeMappingSource)
+            [NotNull] IRelationalTypeMappingSource typeMappingSource,
+            [NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> modelLogger)
         {
             Check.NotNull(databaseCreator, nameof(databaseCreator));
             Check.NotNull(rawSqlCommandBuilder, nameof(rawSqlCommandBuilder));
@@ -86,6 +96,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             Check.NotNull(coreConventionSetBuilder, nameof(coreConventionSetBuilder));
             Check.NotNull(conventionSetBuilders, nameof(conventionSetBuilders));
             Check.NotNull(typeMappingSource, nameof(typeMappingSource));
+            Check.NotNull(modelLogger, nameof(modelLogger));
 
             DatabaseCreator = databaseCreator;
             RawSqlCommandBuilder = rawSqlCommandBuilder;
@@ -97,6 +108,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             CoreConventionSetBuilder = coreConventionSetBuilder;
             ConventionSetBuilder = new CompositeConventionSetBuilder((IReadOnlyList<IConventionSetBuilder>)conventionSetBuilders);
             TypeMappingSource = typeMappingSource;
+            ModelLogger = modelLogger;
         }
 
         /// <summary>
@@ -155,6 +167,12 @@ namespace Microsoft.EntityFrameworkCore.Migrations
         public IRelationalTypeMappingSource TypeMappingSource { get; }
 
         /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public IDiagnosticsLogger<DbLoggerCategory.Model> ModelLogger { get; }
+
+        /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
         /// </summary>
         /// <param name="databaseCreator"> A replacement for the current dependency of this type. </param>
@@ -170,7 +188,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -188,7 +207,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -206,7 +226,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -224,7 +245,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -242,7 +264,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -260,7 +283,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -278,7 +302,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 sqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -296,7 +321,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 coreConventionSetBuilder,
                 ConventionSetBuilders,
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -316,7 +342,8 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 conventionSetBuilder is CompositeConventionSetBuilder compositeConventionSetBuilder
                     ? compositeConventionSetBuilder.Builders
                     : new[] { conventionSetBuilder },
-                TypeMappingSource);
+                TypeMappingSource,
+                ModelLogger);
 
         /// <summary>
         ///     Clones this dependency parameter object with one service replaced.
@@ -334,6 +361,26 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 SqlGenerationHelper,
                 CoreConventionSetBuilder,
                 ConventionSetBuilders,
-                typeMappingSource);
+                typeMappingSource,
+                ModelLogger);
+
+        /// <summary>
+        ///     Clones this dependency parameter object with one service replaced.
+        /// </summary>
+        /// <param name="modelLogger"> The type mapper. </param>
+        /// <returns> A new parameter object with the given service replaced. </returns>
+        public HistoryRepositoryDependencies With([NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> modelLogger)
+            => new HistoryRepositoryDependencies(
+                DatabaseCreator,
+                RawSqlCommandBuilder,
+                Connection,
+                Options,
+                ModelDiffer,
+                MigrationsSqlGenerator,
+                SqlGenerationHelper,
+                CoreConventionSetBuilder,
+                ConventionSetBuilders,
+                TypeMappingSource,
+                modelLogger);
     }
 }

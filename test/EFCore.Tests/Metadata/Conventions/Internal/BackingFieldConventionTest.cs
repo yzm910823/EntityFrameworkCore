@@ -1,8 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
 // ReSharper disable ArrangeAccessorOwnerBody
@@ -68,7 +72,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         {
             var entityType = new Model().AddEntityType(typeof(TheDarkSideOfTheMoon));
             var property = entityType.AddProperty("SpeakToMe", typeof(int));
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Null(property.GetFieldName());
         }
@@ -118,7 +122,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         {
             var entityType = new Model().AddEntityType(typeof(TheDarkerSideOfTheMoon));
             var property = entityType.AddProperty("SpeakToMe", typeof(int));
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Null(property.GetFieldName());
         }
@@ -128,7 +132,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             var entityType = new Model().AddEntityType(typeof(TEntity));
             var property = entityType.AddProperty(propertyName, typeof(int));
 
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Equal(fieldName, property.GetFieldName());
         }
@@ -139,7 +143,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             var entityType = new Model().AddEntityType(typeof(TheDarkSide));
             var property = entityType.AddProperty(OfTheMoon.TheGreatGigInTheSkyProperty);
 
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Equal("_theGreatGigInTheSky", property.GetFieldName());
         }
@@ -150,19 +154,64 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             var entityType = new Model().AddEntityType(typeof(TheDarkSide));
             var property = entityType.AddProperty(TheDarkSide.OnBaseProperty);
 
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Equal("_onBase", property.GetFieldName());
         }
 
         [Fact]
+        public void Multiple_matches_throws()
+        {
+            var entityType = new Model().AddEntityType(typeof(AlwaysLookOnTheBrightSideOfLife));
+            var property = entityType.AddProperty("OnTheRun", typeof(int));
+
+            var convention = new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>());
+
+            Assert.Equal(
+                CoreStrings.ConflictingBackingFields(
+                    "OnTheRun", nameof(AlwaysLookOnTheBrightSideOfLife), "_onTheRun", "m_onTheRun"),
+                Assert.Throws<InvalidOperationException>(
+                    () => convention.Apply(property.Builder)).Message);
+        }
+
+        [Fact]
+        public void Object_field_non_object_property_matches_and_throws_ambiguous()
+        {
+            var entityType = new Model().AddEntityType(typeof(HesNotTheMessiah));
+            var property = entityType.AddProperty("OnTheRun", typeof(int));
+
+            var convention = new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>());
+
+            Assert.Equal(
+                CoreStrings.ConflictingBackingFields(
+                    "OnTheRun", nameof(HesNotTheMessiah), "_onTheRun", "m_onTheRun"),
+                Assert.Throws<InvalidOperationException>(
+                    () => convention.Apply(property.Builder)).Message);
+        }
+
+        [Fact]
+        public void Object_property_non_object_field_matches_and_throws_ambiguous()
+        {
+            var entityType = new Model().AddEntityType(typeof(HesAVeryNaughtyBoy));
+            var property = entityType.AddProperty("OnTheRun", typeof(object));
+
+            var convention = new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>());
+
+            Assert.Equal(
+                CoreStrings.ConflictingBackingFields(
+                    "OnTheRun", nameof(HesAVeryNaughtyBoy), "_onTheRun", "m_onTheRun"),
+                Assert.Throws<InvalidOperationException>(
+                    () => convention.Apply(property.Builder)).Message);
+        }
+
+        [Fact]
         public void Explicitly_set_FieldInfo_is_used()
         {
-            var entityType = new Model().AddEntityType(typeof(TheDarkSideOfTheMoon));
+            var entityType = new Model().AddEntityType(typeof(AlwaysLookOnTheBrightSideOfLife));
             var property = entityType.AddProperty("OnTheRun", typeof(int));
             property.SetField("m_onTheRun");
 
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Equal("m_onTheRun", property.GetFieldName());
         }
@@ -170,11 +219,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         [Fact]
         public void FieldInfo_set_by_annotation_is_used()
         {
-            var entityType = new Model().AddEntityType(typeof(TheDarkSideOfTheMoon));
+            var entityType = new Model().AddEntityType(typeof(AlwaysLookOnTheBrightSideOfLife));
             var property = entityType.AddProperty("OnTheRun", typeof(int));
             property.SetField("m_onTheRun", ConfigurationSource.DataAnnotation);
 
-            new BackingFieldConvention().Apply(property.Builder);
+            new BackingFieldConvention(new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>()).Apply(property.Builder);
 
             Assert.Equal("m_onTheRun", property.GetFieldName());
         }
@@ -197,25 +246,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             }
 
             private int? comfortablyNumb;
-            private int? _comfortablyNumb;
-            private int? _ComfortablyNumb;
-            private int? m_comfortablyNumb;
-            private int? m_ComfortablyNumb;
 
             public int ComfortablyNumb { get; set; }
 
             private readonly int IsThereAnybodyOutThere;
-            private readonly int isThereAnybodyOutThere;
-            private readonly int _isThereAnybodyOutThere;
-            private readonly int _IsThereAnybodyOutThere;
-            private readonly int m_isThereAnybodyOutThere;
-            private readonly int m_IsThereAnybodyOutThere;
 
             private int? breathe;
-            private int? _breathe;
-            private int? _Breathe;
-            private int? m_breathe;
-            private int? m_Breathe;
 
             public int Breathe
             {
@@ -225,9 +261,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             private readonly string onTheRun;
             private int? _onTheRun;
-            private int? _OnTheRun;
-            private int? m_onTheRun;
-            private int? m_OnTheRun;
 
             public int OnTheRun
             {
@@ -236,9 +269,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             }
 
             private int? _time;
-            private int? _Time;
-            private int? m_time;
-            private int? m_Time;
 
             public int Time
             {
@@ -248,8 +278,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             private readonly string _theGreatGigInTheSky;
             private int? _TheGreatGigInTheSky;
-            private int? m_theGreatGigInTheSky;
-            private int? m_TheGreatGigInTheSky;
 
             public int TheGreatGigInTheSky
             {
@@ -258,8 +286,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             }
 
             private int? _Money;
-            private int? m_money;
-            private int? m_Money;
 
             public int Money
             {
@@ -269,7 +295,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             private readonly string _UsAndThem;
             private int? m_usAndThem;
-            private int? m_UsAndThem;
 
             public int UsAndThem
             {
@@ -278,7 +303,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             }
 
             private int? m_anyColourYouLike;
-            private int? m_AnyColourYouLike;
 
             public int AnyColourYouLike
             {
@@ -309,44 +333,23 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             private readonly string m_SpeakToMe;
 
             private readonly int IsThereAnybodyOutThere;
-            private readonly int isThereAnybodyOutThere;
-            private readonly int _isThereAnybodyOutThere;
-            private readonly int _IsThereAnybodyOutThere;
-            private readonly int m_isThereAnybodyOutThere;
-            private readonly int m_IsThereAnybodyOutThere;
 
             private int? breathe;
-            private int? _breathe;
-            private int? _Breathe;
-            private int? m_breathe;
-            private int? m_Breathe;
 
             private readonly string onTheRun;
             private int? _onTheRun;
-            private int? _OnTheRun;
-            private int? m_onTheRun;
-            private int? m_OnTheRun;
 
             private int? _time;
-            private int? _Time;
-            private int? m_time;
-            private int? m_Time;
 
             private readonly string _theGreatGigInTheSky;
             private int? _TheGreatGigInTheSky;
-            private int? m_theGreatGigInTheSky;
-            private int? m_TheGreatGigInTheSky;
 
             private int? _Money;
-            private int? m_money;
-            private int? m_Money;
 
             private readonly string _UsAndThem;
             private int? m_usAndThem;
-            private int? m_UsAndThem;
 
             private int? m_anyColourYouLike;
-            private int? m_AnyColourYouLike;
 
             private readonly string m_brainDamage;
             private int? m_BrainDamage;
@@ -385,6 +388,44 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             public int Unrelated = 2;
         }
+
+        private class AlwaysLookOnTheBrightSideOfLife
+        {
+            private readonly string onTheRun;
+            private int? _onTheRun;
+            private int? m_onTheRun;
+
+            public int OnTheRun
+            {
+                get { return (int)m_onTheRun; }
+                set { m_onTheRun = value; }
+            }
+        }
+
+        private class HesNotTheMessiah
+        {
+            private object _onTheRun;
+            private int m_onTheRun;
+
+            public int OnTheRun
+            {
+                get { return (int)m_onTheRun; }
+                set { m_onTheRun = value; }
+            }
+        }
+
+        private class HesAVeryNaughtyBoy
+        {
+            private object _onTheRun;
+            private int m_onTheRun;
+
+            public object OnTheRun
+            {
+                get { return m_onTheRun; }
+                set { m_onTheRun = (int)value; }
+            }
+        }
+
 #pragma warning disable RCS1222 // Merge preprocessor directives.
 #pragma warning restore 649, 169
 #pragma warning restore IDE0027 // Use expression body for accessors

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query.Expressions.Internal;
@@ -65,6 +66,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
 
             Dependencies = dependencies;
             _queryCompilationContext = queryCompilationContext;
+            Loggers = queryCompilationContext.Loggers;
         }
 
         /// <summary>
@@ -96,6 +98,11 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
         }
 
         /// <summary>
+        ///     Loggers to use.
+        /// </summary>
+        protected virtual DiagnosticsLoggers Loggers { get; }
+
+        /// <summary>
         ///     Dependencies used to create a <see cref="SelectExpression" />
         /// </summary>
         protected virtual SelectExpressionDependencies Dependencies { get; }
@@ -125,8 +132,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
         public virtual TableExpressionBase ProjectStarTable
         {
             get => _projectStarTable ?? (_tables.Count == 1 ? _tables.Single() : null);
-            [param: CanBeNull]
-            set => _projectStarTable = value;
+            [param: CanBeNull] set => _projectStarTable = value;
         }
 
         /// <summary>
@@ -350,7 +356,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
                && Offset == null
                && Projection.Count == 0
                && OrderBy.Count == 0
-               // GroupBy is intentionally ommitted because GroupBy does not require a pushdown.
+               // GroupBy is intentionally omitted because GroupBy does not require a pushdown.
                //&& GroupBy.Count == 0
                && Tables.Count == 1;
 
@@ -775,7 +781,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
 
                 case ConditionalExpression conditionalExpression:
                     return FindResultTypeMapping(conditionalExpression.IfTrue)
-                        ?? FindResultTypeMapping(conditionalExpression.IfFalse);
+                           ?? FindResultTypeMapping(conditionalExpression.IfFalse);
 
                 case SqlFunctionExpression sqlFunctionExpression:
                     return sqlFunctionExpression.ResultTypeMapping;
@@ -872,8 +878,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
             }
 
             var currentOrderingIndex = _orderBy.FindIndex(
-                                                    e => e.Expression.Equals(expression)
-                                                         || e.Expression.Equals(removedProjection));
+                e => e.Expression.Equals(expression)
+                     || e.Expression.Equals(removedProjection));
             if (currentOrderingIndex != -1)
             {
                 var oldOrdering = _orderBy[currentOrderingIndex];
@@ -1130,6 +1136,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
         ///     Clears the ORDER BY of this SelectExpression.
         /// </summary>
         public virtual void ClearOrderBy() => _orderBy.Clear();
+
+        internal virtual void ClearGroupBy() => _groupBy.Clear();
 
         /// <summary>
         ///     Adds a SQL CROSS JOIN to this SelectExpression.
@@ -1454,7 +1462,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
         ///     The new default query SQL generator.
         /// </returns>
         public virtual IQuerySqlGenerator CreateDefaultQuerySqlGenerator()
-            => Dependencies.QuerySqlGeneratorFactory.CreateDefault(this);
+            => Dependencies.QuerySqlGeneratorFactory.CreateDefault(this, Loggers);
 
         /// <summary>
         ///     Creates the FromSql query SQL generator.
@@ -1468,10 +1476,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Expressions
             [NotNull] string sql,
             [NotNull] Expression arguments)
             => Dependencies.QuerySqlGeneratorFactory
-                .CreateFromSql(
-                    this,
-                    Check.NotEmpty(sql, nameof(sql)),
-                    Check.NotNull(arguments, nameof(arguments)));
+                .CreateFromSql(this, sql, arguments, Loggers);
 
         /// <summary>
         ///     Convert this object into a string representation.

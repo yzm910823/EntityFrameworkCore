@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -39,7 +41,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDataTypeMismatch(
-                    typeof(Cat).Name, "Type", typeof(Dog).Name, "Type", "Type", nameof(Animal), "nvarchar(max)", "int"), modelBuilder.Model);
+                    typeof(Cat).Name, "Type", typeof(Dog).Name, "Type", "Type", nameof(Animal), "nvarchar(max)", "int"),
+                modelBuilder.Model);
         }
 
         public override void Detects_incompatible_shared_columns_with_shared_table()
@@ -66,7 +69,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDataTypeMismatch(
-                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "nvarchar(30)", "nvarchar(15)"), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "nvarchar(30)",
+                    "nvarchar(15)"), modelBuilder.Model);
         }
 
         [Fact]
@@ -80,7 +84,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 RelationalStrings.DuplicateColumnNameDataTypeMismatch(
-                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "varchar(max)", "nvarchar(max)"), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Breed), nameof(Dog), nameof(Dog.Breed), nameof(Cat.Breed), nameof(Animal), "varchar(max)",
+                    "nvarchar(max)"), modelBuilder.Model);
         }
 
         [Fact]
@@ -103,7 +108,8 @@ namespace Microsoft.EntityFrameworkCore
 
             VerifyError(
                 SqlServerStrings.DuplicateColumnNameValueGenerationStrategyMismatch(
-                    nameof(Cat), nameof(Cat.Identity), nameof(Dog), nameof(Dog.Identity), nameof(Cat.Identity), nameof(Animal)), modelBuilder.Model);
+                    nameof(Cat), nameof(Cat.Identity), nameof(Dog), nameof(Dog.Identity), nameof(Cat.Identity), nameof(Animal)),
+                modelBuilder.Model);
         }
 
         [Fact]
@@ -174,7 +180,7 @@ namespace Microsoft.EntityFrameworkCore
             var modelBuilder = CreateConventionalModelBuilder();
             modelBuilder.Entity<Animal>().Property<decimal>("Price");
 
-            VerifyWarning(SqlServerStrings.LogDefaultDecimalTypeColumn.GenerateMessage("Price", nameof(Animal)), modelBuilder.Model);
+            VerifyWarning(SqlServerStrings.LogDefaultDecimalTypeColumn(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("Price", nameof(Animal)), modelBuilder.Model);
         }
 
         [Fact]
@@ -183,7 +189,7 @@ namespace Microsoft.EntityFrameworkCore
             var modelBuilder = CreateConventionalModelBuilder();
             modelBuilder.Entity<Animal>().Property<decimal?>("Price");
 
-            VerifyWarning(SqlServerStrings.LogDefaultDecimalTypeColumn.GenerateMessage("Price", nameof(Animal)), modelBuilder.Model);
+            VerifyWarning(SqlServerStrings.LogDefaultDecimalTypeColumn(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("Price", nameof(Animal)), modelBuilder.Model);
         }
 
         [Fact]
@@ -193,7 +199,7 @@ namespace Microsoft.EntityFrameworkCore
             modelBuilder.Entity<Dog>().Property(d => d.Id).ValueGeneratedNever();
             modelBuilder.Entity<Dog>().Property<byte>("Bite").UseSqlServerIdentityColumn();
 
-            VerifyWarning(SqlServerStrings.LogByteIdentityColumn.GenerateMessage("Bite", nameof(Dog)), modelBuilder.Model);
+            VerifyWarning(SqlServerStrings.LogByteIdentityColumn(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("Bite", nameof(Dog)), modelBuilder.Model);
         }
 
         [Fact]
@@ -203,7 +209,7 @@ namespace Microsoft.EntityFrameworkCore
             modelBuilder.Entity<Dog>().Property(d => d.Id).ValueGeneratedNever();
             modelBuilder.Entity<Dog>().Property<byte?>("Bite").UseSqlServerIdentityColumn();
 
-            VerifyWarning(SqlServerStrings.LogByteIdentityColumn.GenerateMessage("Bite", nameof(Dog)), modelBuilder.Model);
+            VerifyWarning(SqlServerStrings.LogByteIdentityColumn(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("Bite", nameof(Dog)), modelBuilder.Model);
         }
 
         [Fact]

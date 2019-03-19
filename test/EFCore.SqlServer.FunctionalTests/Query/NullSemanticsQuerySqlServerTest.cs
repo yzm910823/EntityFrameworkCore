@@ -466,30 +466,30 @@ WHERE (([e].[NullableBoolA] <> [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS N
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[BoolA] = [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN [e].[IntA] = [e].[IntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[NullableBoolA] = [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN [e].[IntA] = [e].[NullableIntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN ([e].[NullableBoolA] = [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS NULL AND [e].[NullableBoolB] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN ([e].[NullableIntA] = [e].[NullableIntB]) OR ([e].[NullableIntA] IS NULL AND [e].[NullableIntB] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -502,30 +502,30 @@ END");
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[BoolA] = [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN [e].[IntA] = [e].[IntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[NullableBoolA] = [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN [e].[IntA] = [e].[NullableIntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN ([e].[NullableBoolA] = [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS NULL AND [e].[NullableBoolB] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN ([e].[NullableIntA] = [e].[NullableIntB]) OR ([e].[NullableIntA] IS NULL AND [e].[NullableIntB] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -538,30 +538,30 @@ END");
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[BoolA] <> [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN [e].[IntA] = [e].[IntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN ([e].[NullableBoolA] <> [e].[BoolB]) OR [e].[NullableBoolA] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN [e].[IntA] = [e].[NullableIntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN (([e].[NullableBoolA] <> [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS NULL OR [e].[NullableBoolB] IS NULL)) AND ([e].[NullableBoolA] IS NOT NULL OR [e].[NullableBoolB] IS NOT NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN (([e].[NullableIntA] = [e].[NullableIntB]) AND ([e].[NullableIntA] IS NOT NULL AND [e].[NullableIntB] IS NOT NULL)) OR ([e].[NullableIntA] IS NULL AND [e].[NullableIntB] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -574,30 +574,30 @@ END");
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[BoolA] <> [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN [e].[IntA] = [e].[IntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN ([e].[NullableBoolA] <> [e].[BoolB]) OR [e].[NullableBoolA] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN [e].[IntA] = [e].[NullableIntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN (([e].[NullableBoolA] <> [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS NULL OR [e].[NullableBoolB] IS NULL)) AND ([e].[NullableBoolA] IS NOT NULL OR [e].[NullableBoolB] IS NOT NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN (([e].[NullableIntA] = [e].[NullableIntB]) AND ([e].[NullableIntA] IS NOT NULL AND [e].[NullableIntB] IS NOT NULL)) OR ([e].[NullableIntA] IS NULL AND [e].[NullableIntB] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -610,30 +610,30 @@ END");
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[BoolA] <> [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN [e].[IntA] <> [e].[IntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN ([e].[NullableBoolA] <> [e].[BoolB]) OR [e].[NullableBoolA] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN ([e].[IntA] <> [e].[NullableIntB]) OR [e].[NullableIntB] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN (([e].[NullableBoolA] <> [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS NULL OR [e].[NullableBoolB] IS NULL)) AND ([e].[NullableBoolA] IS NOT NULL OR [e].[NullableBoolB] IS NOT NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END = CASE
     WHEN (([e].[NullableIntA] <> [e].[NullableIntB]) OR ([e].[NullableIntA] IS NULL OR [e].[NullableIntB] IS NULL)) AND ([e].[NullableIntA] IS NOT NULL OR [e].[NullableIntB] IS NOT NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -646,30 +646,30 @@ END");
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN [e].[BoolA] <> [e].[BoolB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN [e].[IntA] <> [e].[IntB]
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN ([e].[NullableBoolA] <> [e].[BoolB]) OR [e].[NullableBoolA] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN ([e].[IntA] <> [e].[NullableIntB]) OR [e].[NullableIntB] IS NULL
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
     WHEN (([e].[NullableBoolA] <> [e].[NullableBoolB]) OR ([e].[NullableBoolA] IS NULL OR [e].[NullableBoolB] IS NULL)) AND ([e].[NullableBoolA] IS NOT NULL OR [e].[NullableBoolB] IS NOT NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END <> CASE
     WHEN (([e].[NullableIntA] <> [e].[NullableIntB]) OR ([e].[NullableIntA] IS NULL OR [e].[NullableIntB] IS NULL)) AND ([e].[NullableIntA] IS NOT NULL OR [e].[NullableIntB] IS NOT NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -796,7 +796,7 @@ WHERE ((([e].[NullableStringB] IS NOT NULL AND (([e].[NullableStringA] <> N'Foo'
             AssertSql(
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE COALESCE([e].[NullableBoolA], 1) = 1");
+WHERE COALESCE([e].[NullableBoolA], CAST(1 AS bit)) = CAST(1 AS bit)");
         }
 
         public override void Where_equal_nullable_with_null_value_parameter()
@@ -914,7 +914,51 @@ END) OR [e].[NullableStringC] IS NULL");
             AssertSql(
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE ((CHARINDEX([e].[NullableStringB], [e].[NullableStringA]) > 0) OR ([e].[NullableStringB] = N'')) AND ([e].[BoolA] = 1)");
+WHERE ((CHARINDEX([e].[NullableStringB], [e].[NullableStringA]) > 0) OR ([e].[NullableStringB] = N'')) AND ([e].[BoolA] = CAST(1 AS bit))");
+        }
+
+        public override void Null_comparison_in_selector_with_relational_nulls()
+        {
+            base.Null_comparison_in_selector_with_relational_nulls();
+
+            AssertSql(
+                @"SELECT CASE
+    WHEN [e].[NullableStringA] <> N'Foo'
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END
+FROM [Entities1] AS [e]");
+        }
+
+        public override void Null_comparison_in_order_by_with_relational_nulls()
+        {
+            base.Null_comparison_in_order_by_with_relational_nulls();
+
+            AssertSql(
+                @"SELECT [e].[Id], [e].[BoolA], [e].[BoolB], [e].[BoolC], [e].[IntA], [e].[IntB], [e].[IntC], [e].[NullableBoolA], [e].[NullableBoolB], [e].[NullableBoolC], [e].[NullableIntA], [e].[NullableIntB], [e].[NullableIntC], [e].[NullableStringA], [e].[NullableStringB], [e].[NullableStringC], [e].[StringA], [e].[StringB], [e].[StringC]
+FROM [Entities1] AS [e]
+ORDER BY CASE
+    WHEN [e].[NullableStringA] <> N'Foo'
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END, CASE
+    WHEN [e].[NullableIntB] <> 10
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END");
+        }
+
+        public override void Null_comparison_in_join_key_with_relational_nulls()
+        {
+            base.Null_comparison_in_join_key_with_relational_nulls();
+
+            AssertSql(
+                @"SELECT [e1].[Id], [e1].[BoolA], [e1].[BoolB], [e1].[BoolC], [e1].[IntA], [e1].[IntB], [e1].[IntC], [e1].[NullableBoolA], [e1].[NullableBoolB], [e1].[NullableBoolC], [e1].[NullableIntA], [e1].[NullableIntB], [e1].[NullableIntC], [e1].[NullableStringA], [e1].[NullableStringB], [e1].[NullableStringC], [e1].[StringA], [e1].[StringB], [e1].[StringC], [i].[Id], [i].[BoolA], [i].[BoolB], [i].[BoolC], [i].[IntA], [i].[IntB], [i].[IntC], [i].[NullableBoolA], [i].[NullableBoolB], [i].[NullableBoolC], [i].[NullableIntA], [i].[NullableIntB], [i].[NullableIntC], [i].[NullableStringA], [i].[NullableStringB], [i].[NullableStringC], [i].[StringA], [i].[StringB], [i].[StringC]
+FROM [Entities1] AS [e1]
+INNER JOIN [Entities2] AS [i] ON CASE
+    WHEN [e1].[NullableStringA] <> N'Foo'
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END = CASE
+    WHEN [i].[NullableBoolB] <> CAST(1 AS bit)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END");
         }
 
         public override void Where_conditional_search_condition_in_result()
@@ -927,24 +971,24 @@ WHERE ((CHARINDEX([e].[NullableStringB], [e].[NullableStringA]) > 0) OR ([e].[Nu
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
-    WHEN @__prm_0 = 1
+    WHEN @__prm_0 = CAST(1 AS bit)
     THEN CASE
         WHEN [e].[StringA] IN (N'Foo', N'Bar')
-        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
-    END ELSE CAST(0 AS BIT)
-END = 1",
+        THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+    END ELSE CAST(0 AS bit)
+END = CAST(1 AS bit)",
                 //
                 @"@__p_0='False'
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
-    WHEN @__p_0 = 1
-    THEN CAST(1 AS BIT) ELSE CASE
+    WHEN @__p_0 = CAST(1 AS bit)
+    THEN CAST(1 AS bit) ELSE CASE
         WHEN [e].[StringA] LIKE N'A' + N'%' AND (LEFT([e].[StringA], LEN(N'A')) = N'A')
-        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+        THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
     END
-END = 1");
+END = CAST(1 AS bit)");
         }
 
         public override void Where_nested_conditional_search_condition_in_result()
@@ -958,27 +1002,27 @@ END = 1");
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
 WHERE CASE
-    WHEN @__prm1_0 = 1
+    WHEN @__prm1_0 = CAST(1 AS bit)
     THEN CASE
-        WHEN @__prm2_1 = 1
+        WHEN @__prm2_1 = CAST(1 AS bit)
         THEN CASE
-            WHEN [e].[BoolA] = 1
+            WHEN [e].[BoolA] = CAST(1 AS bit)
             THEN CASE
                 WHEN [e].[StringA] LIKE N'A' + N'%' AND (LEFT([e].[StringA], LEN(N'A')) = N'A')
-                THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
-            END ELSE CAST(0 AS BIT)
-        END ELSE CAST(1 AS BIT)
+                THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+            END ELSE CAST(0 AS bit)
+        END ELSE CAST(1 AS bit)
     END ELSE CASE
-        WHEN [e].[BoolB] = 1
+        WHEN [e].[BoolB] = CAST(1 AS bit)
         THEN CASE
             WHEN [e].[StringA] IN (N'Foo', N'Bar')
-            THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+            THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
         END ELSE CASE
             WHEN [e].[StringB] IN (N'Foo', N'Bar')
-            THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+            THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
         END
     END
-END = 1");
+END = CAST(1 AS bit)");
         }
 
         public override void Where_equal_using_relational_null_semantics()
@@ -998,7 +1042,7 @@ WHERE [e].[NullableBoolA] = [e].[NullableBoolB]");
             AssertSql(
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE [e].[NullableBoolA] = 1");
+WHERE [e].[NullableBoolA] = CAST(1 AS bit)");
         }
 
         public override void Where_nullable_bool_equal_with_constant()
@@ -1008,7 +1052,7 @@ WHERE [e].[NullableBoolA] = 1");
             AssertSql(
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE [e].[NullableBoolA] = 1");
+WHERE [e].[NullableBoolA] = CAST(1 AS bit)");
         }
 
         public override void Where_nullable_bool_with_null_check()
@@ -1018,7 +1062,7 @@ WHERE [e].[NullableBoolA] = 1");
             AssertSql(
                 @"SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE [e].[NullableBoolA] IS NOT NULL AND ([e].[NullableBoolA] = 1)");
+WHERE [e].[NullableBoolA] IS NOT NULL AND ([e].[NullableBoolA] = CAST(1 AS bit))");
         }
 
         public override void Where_equal_using_relational_null_semantics_with_parameter()
@@ -1084,13 +1128,13 @@ WHERE [e].[NullableBoolA] <> [e].[NullableBoolB]");
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1",
+WHERE @__p_0 = CAST(1 AS bit)",
                 //
                 @"@__p_0='False'
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1");
+WHERE @__p_0 = CAST(1 AS bit)");
         }
 
         public override void Where_comparison_null_constant_and_nonnull_parameter()
@@ -1102,13 +1146,13 @@ WHERE @__p_0 = 1");
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1",
+WHERE @__p_0 = CAST(1 AS bit)",
                 //
                 @"@__p_0='True'
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1");
+WHERE @__p_0 = CAST(1 AS bit)");
         }
 
         public override void Where_comparison_nonnull_constant_and_null_parameter()
@@ -1120,13 +1164,13 @@ WHERE @__p_0 = 1");
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1",
+WHERE @__p_0 = CAST(1 AS bit)",
                 //
                 @"@__p_0='True'
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1");
+WHERE @__p_0 = CAST(1 AS bit)");
         }
 
         public override void Where_comparison_null_semantics_optimization_works_with_complex_predicates()
@@ -1162,13 +1206,13 @@ WHERE [e].[NullableBoolA] = [e].[NullableBoolB]");
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1",
+WHERE @__p_0 = CAST(1 AS bit)",
                 //
                 @"@__p_0='False'
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE @__p_0 = 1");
+WHERE @__p_0 = CAST(1 AS bit)");
         }
 
         public override void From_sql_composed_with_relational_null_comparison()
@@ -1188,7 +1232,7 @@ WHERE [c].[StringA] = [c].[StringB]");
             base.Projecting_nullable_bool_with_coalesce();
 
             AssertSql(
-                @"SELECT [e].[Id], CAST(COALESCE([e].[NullableBoolA], 0) AS bit) AS [Coalesce]
+                @"SELECT [e].[Id], COALESCE([e].[NullableBoolA], CAST(0 AS bit)) AS [Coalesce]
 FROM [Entities1] AS [e]");
         }
 
@@ -1197,7 +1241,7 @@ FROM [Entities1] AS [e]");
             base.Projecting_nullable_bool_with_coalesce_nested();
 
             AssertSql(
-                @"SELECT [e].[Id], CAST(COALESCE([e].[NullableBoolA], COALESCE([e].[NullableBoolB], 0)) AS bit) AS [Coalesce]
+                @"SELECT [e].[Id], COALESCE([e].[NullableBoolA], COALESCE([e].[NullableBoolB], CAST(0 AS bit))) AS [Coalesce]
 FROM [Entities1] AS [e]");
         }
 

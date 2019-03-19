@@ -162,8 +162,8 @@ namespace Microsoft.Data.Sqlite
         [Theory]
         [InlineData(true, 1L)]
         [InlineData((byte)1, 1L)]
-        [InlineData('A', 65L)]
-        [InlineData('A', "A", SqliteType.Text)]
+        [InlineData('A', 65L, SqliteType.Integer)]
+        [InlineData('A', "A")]
         [InlineData(3.14, 3.14)]
         [InlineData(3f, 3.0)]
         [InlineData(1, 1L)]
@@ -436,7 +436,8 @@ namespace Microsoft.Data.Sqlite
             }
         }
 
-        [Fact, UseCulture("ar-SA")]
+        [Fact]
+        [UseCulture("ar-SA")]
         public void Bind_DateTime_with_Arabic_Culture()
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
@@ -463,7 +464,8 @@ namespace Microsoft.Data.Sqlite
             }
         }
 
-        [Fact, UseCulture("ar-SA")]
+        [Fact]
+        [UseCulture("ar-SA")]
         public void Bind_DateTimeOffset_with_Arabic_Culture()
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))

@@ -5,20 +5,25 @@ using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 using JetBrains.Annotations;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
-    public class DbSetSource : IDbSetSource, IDbQuerySource
+    public class DbSetSource : IDbSetSource
     {
         private static readonly MethodInfo _genericCreateSet
             = typeof(DbSetSource).GetTypeInfo().GetDeclaredMethod(nameof(CreateSetFactory));
-
-        private static readonly MethodInfo _genericCreateQuery
-            = typeof(DbSetSource).GetTypeInfo().GetDeclaredMethod(nameof(CreateQueryFactory));
 
         private readonly ConcurrentDictionary<Type, Func<DbContext, object>> _cache
             = new ConcurrentDictionary<Type, Func<DbContext, object>>();
@@ -29,13 +34,6 @@ namespace Microsoft.EntityFrameworkCore.Internal
         /// </summary>
         public virtual object Create(DbContext context, Type type)
             => CreateCore(context, type, _genericCreateSet);
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public virtual object CreateQuery(DbContext context, Type type)
-            => CreateCore(context, type, _genericCreateQuery);
 
         private object CreateCore(DbContext context, Type type, MethodInfo createMethod)
             => _cache.GetOrAdd(
@@ -48,10 +46,5 @@ namespace Microsoft.EntityFrameworkCore.Internal
         private static Func<DbContext, object> CreateSetFactory<TEntity>()
             where TEntity : class
             => c => new InternalDbSet<TEntity>(c);
-
-        [UsedImplicitly]
-        private static Func<DbContext, DbQuery<TQuery>> CreateQueryFactory<TQuery>()
-            where TQuery : class
-            => c => new InternalDbQuery<TQuery>(c);
     }
 }

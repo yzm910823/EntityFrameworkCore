@@ -7,6 +7,8 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+#nullable enable
+
 // ReSharper disable once CheckNamespace
 namespace System
 {
@@ -39,9 +41,9 @@ namespace System
             type = type.UnwrapNullableType();
 
             return type.IsInteger()
-                || type == typeof(decimal)
-                || type == typeof(float)
-                || type == typeof(double);
+                   || type == typeof(decimal)
+                   || type == typeof(float)
+                   || type == typeof(double);
         }
 
         public static bool IsInteger(this Type type)
@@ -61,9 +63,9 @@ namespace System
 
         public static bool IsSignedInteger(this Type type)
             => type == typeof(int)
-                   || type == typeof(long)
-                   || type == typeof(short)
-                   || type == typeof(sbyte);
+               || type == typeof(long)
+               || type == typeof(short)
+               || type == typeof(sbyte);
 
         public static bool IsAnonymousType(this Type type)
             => type.Name.StartsWith("<>")
@@ -147,11 +149,11 @@ namespace System
             return sequenceType;
         }
 
-        public static Type TryGetSequenceType(this Type type)
+        public static Type? TryGetSequenceType(this Type type)
             => type.TryGetElementType(typeof(IEnumerable<>))
                ?? type.TryGetElementType(typeof(IAsyncEnumerable<>));
 
-        public static Type TryGetElementType(this Type type, Type interfaceOrBaseType)
+        public static Type? TryGetElementType(this Type type, Type interfaceOrBaseType)
         {
             if (type.GetTypeInfo().IsGenericTypeDefinition)
             {
@@ -160,7 +162,7 @@ namespace System
 
             var types = GetGenericTypeImplementations(type, interfaceOrBaseType);
 
-            Type singleImplementation = null;
+            Type? singleImplementation = null;
             foreach (var impelementation in types)
             {
                 if (singleImplementation == null)
@@ -297,7 +299,7 @@ namespace System
 #pragma warning restore IDE0034 // Simplify 'default' expression
         };
 
-        public static object GetDefaultValue(this Type type)
+        public static object? GetDefaultValue(this Type type)
         {
             if (!type.GetTypeInfo().IsValueType)
             {

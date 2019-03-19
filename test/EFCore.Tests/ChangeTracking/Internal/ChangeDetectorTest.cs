@@ -308,7 +308,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 context.ChangeTracker.DetectChanges();
 
                 Assert.Equal(EntityState.Modified, entityEntry.State);
-                Assert.Equal(new[] { 1, 767, 3, 4 }, propertyEntry.CurrentValue);            }
+                Assert.Equal(new[] { 1, 767, 3, 4 }, propertyEntry.CurrentValue);
+            }
         }
 
         private static void AssertDetected(EntityEntry<Baxter> entityEntry, PropertyEntry<Baxter, int[]> propertyEntry)
@@ -358,7 +359,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             protected virtual bool UseTypeMapping => false;
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(Guid.NewGuid().ToString());
+                => optionsBuilder
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(Guid.NewGuid().ToString());
 
             protected internal override void OnModelCreating(ModelBuilder modelBuilder)
             {
@@ -2352,12 +2355,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             return builder.Model;
         }
 
-        private static InternalClrEntityEntry CreateInternalEntry<TEntity>(IServiceProvider contextServices, TEntity entity = null)
+        private static InternalEntityEntry CreateInternalEntry<TEntity>(IServiceProvider contextServices,
+            TEntity entity = null)
             where TEntity : class, new()
-            => new InternalClrEntityEntry(
-                contextServices.GetRequiredService<IStateManager>(),
-                contextServices.GetRequiredService<IModel>().FindEntityType(typeof(TEntity)),
-                entity ?? new TEntity());
+            => contextServices.GetRequiredService<IStateManager>()
+                .GetOrCreateEntry(
+                    entity ?? new TEntity(),
+                    contextServices.GetRequiredService<IModel>().FindEntityType(typeof(TEntity)));
 
         private static IServiceProvider CreateContextServices(IModel model = null)
         {
@@ -2379,17 +2383,26 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
             public Tuple<InternalEntityEntry, EntityState> Attached { get; set; }
 
-            public override void AttachGraph(InternalEntityEntry rootEntry, EntityState entityState, bool forceStateWhenUnknownKey)
+            public override void AttachGraph(
+                InternalEntityEntry rootEntry,
+                EntityState targetState,
+                EntityState storeGeneratedWithKeySetTargetState,
+                bool forceStateWhenUnknownKey)
             {
-                Attached = Tuple.Create(rootEntry, entityState);
+                Attached = Tuple.Create(rootEntry, targetState);
 
-                base.AttachGraph(rootEntry, entityState, forceStateWhenUnknownKey);
+                base.AttachGraph(rootEntry, targetState, storeGeneratedWithKeySetTargetState, forceStateWhenUnknownKey);
             }
         }
 
         private class TestRelationshipListener : INavigationListener, IKeyListener
         {
-            public Tuple<InternalEntityEntry, IProperty, IReadOnlyList<IKey>, IReadOnlyList<IForeignKey>, object, object> KeyChange { get; set; }
+            public Tuple<InternalEntityEntry, IProperty, IReadOnlyList<IKey>, IReadOnlyList<IForeignKey>, object, object> KeyChange
+            {
+                get;
+                set;
+            }
+
             public Tuple<InternalEntityEntry, INavigation, object, object> ReferenceChange { get; set; }
             public Tuple<InternalEntityEntry, INavigation, IEnumerable<object>, IEnumerable<object>> CollectionChange { get; set; }
 
@@ -2398,7 +2411,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 ReferenceChange = Tuple.Create(entry, navigation, oldValue, newValue);
             }
 
-            public void NavigationCollectionChanged(InternalEntityEntry entry, INavigation navigation, IEnumerable<object> added, IEnumerable<object> removed)
+            public void NavigationCollectionChanged(
+                InternalEntityEntry entry, INavigation navigation, IEnumerable<object> added, IEnumerable<object> removed)
             {
                 CollectionChange = Tuple.Create(entry, navigation, added, removed);
             }

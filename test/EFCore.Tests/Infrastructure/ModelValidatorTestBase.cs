@@ -138,6 +138,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         protected class EntityWithInvalidProperties
         {
             public int Id { get; set; }
+
             public bool NotImplemented
             {
                 get => throw new NotImplementedException();
@@ -184,7 +185,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             Assert.Equal(expectedMessage, Assert.Throws<InvalidOperationException>(() => Validate(model)).Message);
         }
 
-        protected virtual void Validate(IModel model) => ((Model)model).Validate();
+        protected virtual void Validate(IModel model) => ((Model)model).Finalize();
 
         protected DiagnosticsLogger<DbLoggerCategory.Model.Validation> CreateValidationLogger(bool sensitiveDataLoggingEnabled = false)
         {
@@ -193,7 +194,8 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             return new DiagnosticsLogger<DbLoggerCategory.Model.Validation>(
                 LoggerFactory,
                 options,
-                new DiagnosticListener("Fake"));
+                new DiagnosticListener("Fake"),
+                TestHelpers.LoggingDefinitions);
         }
 
         protected DiagnosticsLogger<DbLoggerCategory.Model> CreateModelLogger(bool sensitiveDataLoggingEnabled = false)
@@ -203,7 +205,8 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             return new DiagnosticsLogger<DbLoggerCategory.Model>(
                 LoggerFactory,
                 options,
-                new DiagnosticListener("Fake"));
+                new DiagnosticListener("Fake"),
+                TestHelpers.LoggingDefinitions);
         }
 
         protected virtual ModelBuilder CreateConventionalModelBuilder(bool sensitiveDataLoggingEnabled = false)
@@ -216,8 +219,10 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
 
             conventionSet.ModelBuiltConventions.Add(
                 new ValidatingConvention(
-                    TestHelpers.CreateModelValidator(
-                        CreateModelLogger(sensitiveDataLoggingEnabled), CreateValidationLogger(sensitiveDataLoggingEnabled))));
+                    TestHelpers.CreateModelValidator(),
+                    new Diagnostics.DiagnosticsLoggers(
+                        CreateModelLogger(sensitiveDataLoggingEnabled),
+                        CreateValidationLogger(sensitiveDataLoggingEnabled))));
 
             return new ModelBuilder(conventionSet);
         }

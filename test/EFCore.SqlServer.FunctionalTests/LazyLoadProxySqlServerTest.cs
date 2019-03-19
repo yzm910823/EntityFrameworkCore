@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
@@ -170,16 +170,16 @@ WHERE [e].[ParentId] = @__p_0",
                 ignoreLineEndingDifferences: true);
         }
 
-        public override void Lazy_load_collection_already_loaded(EntityState state)
+        public override void Lazy_load_collection_already_loaded(EntityState state, CascadeTiming cascadeDeleteTiming)
         {
-            base.Lazy_load_collection_already_loaded(state);
+            base.Lazy_load_collection_already_loaded(state, cascadeDeleteTiming);
 
             Assert.Equal("", Sql);
         }
 
-        public override void Lazy_load_many_to_one_reference_to_principal_already_loaded(EntityState state)
+        public override void Lazy_load_many_to_one_reference_to_principal_already_loaded(EntityState state, CascadeTiming cascadeDeleteTiming)
         {
-            base.Lazy_load_many_to_one_reference_to_principal_already_loaded(state);
+            base.Lazy_load_many_to_one_reference_to_principal_already_loaded(state, cascadeDeleteTiming);
 
             Assert.Equal("", Sql);
         }
@@ -191,9 +191,9 @@ WHERE [e].[ParentId] = @__p_0",
             Assert.Equal("", Sql);
         }
 
-        public override void Lazy_load_one_to_one_reference_to_dependent_already_loaded(EntityState state)
+        public override void Lazy_load_one_to_one_reference_to_dependent_already_loaded(EntityState state, CascadeTiming cascadeDeleteTiming)
         {
-            base.Lazy_load_one_to_one_reference_to_dependent_already_loaded(state);
+            base.Lazy_load_one_to_one_reference_to_dependent_already_loaded(state, cascadeDeleteTiming);
 
             Assert.Equal("", Sql);
         }
@@ -439,11 +439,6 @@ WHERE [e].[ParentId] = @__p_0",
         {
             public TestSqlLoggerFactory TestSqlLoggerFactory => (TestSqlLoggerFactory)ListLoggerFactory;
             protected override ITestStoreFactory TestStoreFactory => SqlServerTestStoreFactory.Instance;
-
-            public override DbContextOptionsBuilder AddOptions(DbContextOptionsBuilder builder)
-                => base.AddOptions(builder).ConfigureWarnings(
-                    c => c
-                        .Log(RelationalEventId.QueryClientEvaluationWarning));
         }
     }
 }

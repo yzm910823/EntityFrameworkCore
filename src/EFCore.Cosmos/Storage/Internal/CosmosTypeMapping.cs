@@ -24,17 +24,22 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
             [CanBeNull] ValueComparer comparer = null,
             [CanBeNull] ValueComparer keyComparer = null,
             [CanBeNull] ValueComparer structuralComparer = null)
-            : base(new CoreTypeMappingParameters(
-                clrType,
-                converter: null,
-                comparer,
-                keyComparer,
-                structuralComparer,
-                valueGeneratorFactory: null))
+            : base(
+                new CoreTypeMappingParameters(
+                    clrType,
+                    converter: null,
+                    comparer,
+                    keyComparer,
+                    structuralComparer,
+                    valueGeneratorFactory: null))
         {
         }
 
-        private CosmosTypeMapping(CoreTypeMappingParameters parameters)
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        protected CosmosTypeMapping(CoreTypeMappingParameters parameters)
             : base(parameters)
         {
         }

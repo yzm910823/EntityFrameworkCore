@@ -98,15 +98,13 @@ namespace Microsoft.EntityFrameworkCore
                 Assert.Same(relatedDependent, relatedDependentEntry.Entity);
                 Assert.Same(dependent, dependentEntry.Entity);
 
-                var expectedRelatedState = expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState;
-
                 Assert.Same(principal, principalEntry.Entity);
                 Assert.Equal(expectedState, principalEntry.State);
                 Assert.Same(relatedPrincipal, relatedPrincipalEntry.Entity);
-                Assert.Equal(expectedRelatedState, relatedPrincipalEntry.State);
+                Assert.Equal(expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState, relatedPrincipalEntry.State);
 
                 Assert.Same(relatedDependent, relatedDependentEntry.Entity);
-                Assert.Equal(expectedRelatedState, relatedDependentEntry.State);
+                Assert.Equal(expectedState, relatedDependentEntry.State);
                 Assert.Same(dependent, dependentEntry.Entity);
                 Assert.Equal(expectedState, dependentEntry.State);
 
@@ -200,15 +198,13 @@ namespace Microsoft.EntityFrameworkCore
                 Assert.Same(relatedDependent, context.Entry(relatedDependent).Entity);
                 Assert.Same(dependent, context.Entry(dependent).Entity);
 
-                var expectedRelatedState = expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState;
-
                 Assert.Same(principal, context.Entry(principal).Entity);
                 Assert.Equal(expectedState, context.Entry(principal).State);
                 Assert.Same(relatedPrincipal, context.Entry(relatedPrincipal).Entity);
-                Assert.Equal(expectedRelatedState, context.Entry(relatedPrincipal).State);
+                Assert.Equal(expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState, context.Entry(relatedPrincipal).State);
 
                 Assert.Same(relatedDependent, context.Entry(relatedDependent).Entity);
-                Assert.Equal(expectedRelatedState, context.Entry(relatedDependent).State);
+                Assert.Equal(expectedState, context.Entry(relatedDependent).State);
                 Assert.Same(dependent, context.Entry(dependent).Entity);
                 Assert.Equal(expectedState, context.Entry(dependent).State);
             }
@@ -297,7 +293,8 @@ namespace Microsoft.EntityFrameworkCore
         [Fact]
         public Task Can_add_multiple_new_entities_with_default_values_to_context_async()
         {
-            return TrackMultipleEntitiesDefaultValuesTest((c, e) => c.AddRangeAsync(e[0]), (c, e) => c.AddRangeAsync(e[0]), EntityState.Added);
+            return TrackMultipleEntitiesDefaultValuesTest(
+                (c, e) => c.AddRangeAsync(e[0]), (c, e) => c.AddRangeAsync(e[0]), EntityState.Added);
         }
 
         [Fact]
@@ -315,7 +312,8 @@ namespace Microsoft.EntityFrameworkCore
         [Fact]
         public Task Can_add_multiple_existing_entities_with_default_values_to_context_to_be_deleted()
         {
-            return TrackMultipleEntitiesDefaultValuesTest((c, e) => c.RemoveRange(e[0]), (c, e) => c.RemoveRange(e[0]), EntityState.Deleted);
+            return TrackMultipleEntitiesDefaultValuesTest(
+                (c, e) => c.RemoveRange(e[0]), (c, e) => c.RemoveRange(e[0]), EntityState.Deleted);
         }
 
         private static Task TrackMultipleEntitiesDefaultValuesTest(
@@ -496,15 +494,13 @@ namespace Microsoft.EntityFrameworkCore
                 Assert.Same(relatedDependent, relatedDependentEntry.Entity);
                 Assert.Same(dependent, dependentEntry.Entity);
 
-                var expectedRelatedState = expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState;
-
                 Assert.Same(principal, principalEntry.Entity);
                 Assert.Equal(expectedState, principalEntry.State);
                 Assert.Same(relatedPrincipal, relatedPrincipalEntry.Entity);
-                Assert.Equal(expectedRelatedState, relatedPrincipalEntry.State);
+                Assert.Equal(expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState, relatedPrincipalEntry.State);
 
                 Assert.Same(relatedDependent, relatedDependentEntry.Entity);
-                Assert.Equal(expectedRelatedState, relatedDependentEntry.State);
+                Assert.Equal(expectedState, relatedDependentEntry.State);
                 Assert.Same(dependent, dependentEntry.Entity);
                 Assert.Equal(expectedState, dependentEntry.State);
 
@@ -598,15 +594,13 @@ namespace Microsoft.EntityFrameworkCore
                 Assert.Same(relatedDependent, context.Entry(relatedDependent).Entity);
                 Assert.Same(dependent, context.Entry(dependent).Entity);
 
-                var expectedRelatedState = expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState;
-
                 Assert.Same(principal, context.Entry(principal).Entity);
                 Assert.Equal(expectedState, context.Entry(principal).State);
                 Assert.Same(relatedPrincipal, context.Entry(relatedPrincipal).Entity);
-                Assert.Equal(expectedRelatedState, context.Entry(relatedPrincipal).State);
+                Assert.Equal(expectedState == EntityState.Deleted ? EntityState.Unchanged : expectedState, context.Entry(relatedPrincipal).State);
 
                 Assert.Same(relatedDependent, context.Entry(relatedDependent).Entity);
-                Assert.Equal(expectedRelatedState, context.Entry(relatedDependent).State);
+                Assert.Equal(expectedState, context.Entry(relatedDependent).State);
                 Assert.Same(dependent, context.Entry(dependent).Entity);
                 Assert.Equal(expectedState, context.Entry(dependent).State);
             }
@@ -689,7 +683,8 @@ namespace Microsoft.EntityFrameworkCore
         [Fact]
         public Task Can_add_multiple_existing_entities_with_default_values_to_context_to_be_deleted_Enumerable()
         {
-            return TrackMultipleEntitiesDefaultValueTestEnumerable((c, e) => c.RemoveRange(e), (c, e) => c.RemoveRange(e), EntityState.Deleted);
+            return TrackMultipleEntitiesDefaultValueTestEnumerable(
+                (c, e) => c.RemoveRange(e), (c, e) => c.RemoveRange(e), EntityState.Deleted);
         }
 
         [Fact]
@@ -701,19 +696,22 @@ namespace Microsoft.EntityFrameworkCore
         [Fact]
         public Task Can_add_multiple_new_entities_with_default_values_to_context_Enumerable_graph_async()
         {
-            return TrackMultipleEntitiesDefaultValueTestEnumerable((c, e) => c.AddRangeAsync(e), (c, e) => c.AddRangeAsync(e), EntityState.Added);
+            return TrackMultipleEntitiesDefaultValueTestEnumerable(
+                (c, e) => c.AddRangeAsync(e), (c, e) => c.AddRangeAsync(e), EntityState.Added);
         }
 
         [Fact]
         public Task Can_add_multiple_existing_entities_with_default_values_to_context_to_be_attached_Enumerable_graph()
         {
-            return TrackMultipleEntitiesDefaultValueTestEnumerable((c, e) => c.AttachRange(e), (c, e) => c.AttachRange(e), EntityState.Added);
+            return TrackMultipleEntitiesDefaultValueTestEnumerable(
+                (c, e) => c.AttachRange(e), (c, e) => c.AttachRange(e), EntityState.Added);
         }
 
         [Fact]
         public Task Can_add_multiple_existing_entities_with_default_values_to_context_to_be_updated_Enumerable_graph()
         {
-            return TrackMultipleEntitiesDefaultValueTestEnumerable((c, e) => c.UpdateRange(e), (c, e) => c.UpdateRange(e), EntityState.Added);
+            return TrackMultipleEntitiesDefaultValueTestEnumerable(
+                (c, e) => c.UpdateRange(e), (c, e) => c.UpdateRange(e), EntityState.Added);
         }
 
         private static Task TrackMultipleEntitiesDefaultValueTestEnumerable(

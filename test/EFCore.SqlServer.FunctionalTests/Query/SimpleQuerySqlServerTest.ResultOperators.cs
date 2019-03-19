@@ -3,7 +3,10 @@
 
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Xunit;
 
 namespace Microsoft.EntityFrameworkCore.Query
@@ -34,7 +37,7 @@ WHERE [c2].[CompanyName] LIKE N'B' + N'%' AND (LEFT([c2].[CompanyName], LEN(N'B'
         SELECT 1
         FROM [Orders] AS [o]
         WHERE ([o].[CustomerID] <> N'ALFKI') OR [o].[CustomerID] IS NULL)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -119,7 +122,7 @@ FROM [Customers] AS [c]");
         {
             await base.Sum_over_nested_subquery_is_client_eval(isAsync);
             AssertSql(
-               @"SELECT [c].[CustomerID]
+                @"SELECT [c].[CustomerID]
 FROM [Customers] AS [c]");
         }
 
@@ -127,7 +130,7 @@ FROM [Customers] AS [c]");
         {
             await base.Sum_over_min_subquery_is_client_eval(isAsync);
             AssertSql(
-               @"SELECT [c].[CustomerID]
+                @"SELECT [c].[CustomerID]
 FROM [Customers] AS [c]");
         }
 
@@ -236,7 +239,7 @@ FROM [Customers] AS [c]");
         {
             await base.Average_over_nested_subquery_is_client_eval(isAsync);
             AssertSql(
-               @"@__p_0='3'
+                @"@__p_0='3'
 
 SELECT TOP(@__p_0) [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -247,7 +250,7 @@ ORDER BY [c].[CustomerID]");
         {
             await base.Average_over_max_subquery_is_client_eval(isAsync);
             AssertSql(
-               @"@__p_0='3'
+                @"@__p_0='3'
 
 SELECT TOP(@__p_0) [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -280,7 +283,7 @@ FROM [Order Details] AS [od0]
 WHERE @_outer_OrderID = [od0].[OrderID]");
 
             Assert.Contains(
-                RelationalStrings.LogQueryPossibleExceptionWithAggregateOperator.GenerateMessage(),
+                RelationalStrings.LogQueryPossibleExceptionWithAggregateOperator(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(),
                 Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }
 
@@ -344,7 +347,7 @@ FROM [Customers] AS [c]");
             await base.Min_over_nested_subquery_is_client_eval(isAsync);
 
             AssertSql(
-               @"@__p_0='3'
+                @"@__p_0='3'
 
 SELECT TOP(@__p_0) [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -356,7 +359,7 @@ ORDER BY [c].[CustomerID]");
             await base.Min_over_max_subquery_is_client_eval(isAsync);
 
             AssertSql(
-               @"@__p_0='3'
+                @"@__p_0='3'
 
 SELECT TOP(@__p_0) [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -409,7 +412,7 @@ FROM [Customers] AS [c]");
             await base.Max_over_nested_subquery_is_client_eval(isAsync);
 
             AssertSql(
-               @"@__p_0='3'
+                @"@__p_0='3'
 
 SELECT TOP(@__p_0) [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -421,7 +424,7 @@ ORDER BY [c].[CustomerID]");
             await base.Max_over_sum_subquery_is_client_eval(isAsync);
 
             AssertSql(
-               @"@__p_0='3'
+                @"@__p_0='3'
 
 SELECT TOP(@__p_0) [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -1013,7 +1016,7 @@ SELECT CASE
         SELECT [c].[CustomerID]
         FROM [Customers] AS [c]
     )
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -1143,7 +1146,7 @@ SELECT CASE
         FROM [Orders] AS [o]
         WHERE [o].[CustomerID] = N'VINET'
     )
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 
@@ -1166,8 +1169,9 @@ WHERE [o].[ProductID] = 42");
             base.Paging_operation_on_string_doesnt_issue_warning();
 
             Assert.DoesNotContain(
-                CoreStrings.LogFirstWithoutOrderByAndFilter.GenerateMessage(
-                    "(from char <generated>_1 in [c].CustomerID select [<generated>_1]).FirstOrDefault()"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+                CoreStrings.LogFirstWithoutOrderByAndFilter(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                    "(from char <generated>_1 in [c].CustomerID select [<generated>_1]).FirstOrDefault()"),
+                Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }
 
         public override async Task Project_constant_Sum(bool isAsync)
@@ -1265,6 +1269,19 @@ WHERE ([c].[City] = N'México D.F.') AND [c].[CustomerID] NOT IN (N'ABCDE', N'AL
 
             AssertSql(
                 @"SELECT COUNT(*)
+FROM [Customers] AS [c]");
+        }
+
+        public override async Task Cast_before_aggregate_is_preserved(bool isAsync)
+        {
+            await base.Cast_before_aggregate_is_preserved(isAsync);
+
+            AssertSql(
+                @"SELECT (
+    SELECT AVG(CAST([o].[OrderID] AS float))
+    FROM [Orders] AS [o]
+    WHERE [c].[CustomerID] = [o].[CustomerID]
+)
 FROM [Customers] AS [c]");
         }
     }

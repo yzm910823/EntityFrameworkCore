@@ -29,7 +29,9 @@ FROM [Orders] AS [o]
 GROUP BY [o].[CustomerID]");
 
             // Validating that we don't generate warning when translating GroupBy. See Issue#11157
-            Assert.DoesNotContain("The LINQ expression 'GroupBy([o].CustomerID, [o])' could not be translated and will be evaluated locally.", Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+            Assert.DoesNotContain(
+                "The LINQ expression 'GroupBy([o].CustomerID, [o])' could not be translated and will be evaluated locally.",
+                Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
         }
 
         public override async Task GroupBy_Property_Select_Count(bool isAsync)
@@ -1396,7 +1398,7 @@ ORDER BY [Key]");
             SELECT 1
             FROM [Orders] AS [o0]
             WHERE [c].[CustomerID] = [o0].[CustomerID])
-        THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+        THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
     END
 ), [c].[CustomerID]
 FROM [Customers] AS [c]
@@ -1939,7 +1941,7 @@ FROM (
             GROUP BY [o].[CustomerID]
         ) AS [t]
         WHERE 0 = 1)
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END",
                 //
                 @"SELECT CASE
@@ -1947,7 +1949,7 @@ END",
         SELECT 1
         FROM [Orders] AS [o]
         GROUP BY [o].[CustomerID])
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
 END");
         }
 

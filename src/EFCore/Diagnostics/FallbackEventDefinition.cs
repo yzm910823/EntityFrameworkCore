@@ -6,6 +6,8 @@ using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Utilities;
 using Microsoft.Extensions.Logging;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore.Diagnostics
 {
     /// <summary>
@@ -17,30 +19,18 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// <summary>
         ///     Creates an event definition instance.
         /// </summary>
+        /// <param name="loggingOptions"> Logging options. </param>
         /// <param name="eventId"> The <see cref="EventId" />. </param>
         /// <param name="level"> The <see cref="LogLevel" /> at which the event will be logged. </param>
+        /// <param name="eventIdCode"> A string representing the code that should be passed to <see cref="DbContextOptionsBuilder.ConfigureWarnings"/>. </param>
         /// <param name="messageFormat"> The parameterized message definition. </param>
         public FallbackEventDefinition(
+            [NotNull] ILoggingOptions loggingOptions,
             EventId eventId,
             LogLevel level,
+            [NotNull] string eventIdCode,
             [NotNull] string messageFormat)
-            : this(eventId, level, null, messageFormat)
-        {
-        }
-
-        /// <summary>
-        ///     Creates an event definition instance.
-        /// </summary>
-        /// <param name="eventId"> The <see cref="EventId" />. </param>
-        /// <param name="level"> The <see cref="LogLevel" /> at which the event will be logged. </param>
-        /// <param name="eventIdCode"> A string representing the code that should be passed to ConfigureWanings. </param>
-        /// <param name="messageFormat"> The parameterized message definition. </param>
-        public FallbackEventDefinition(
-            EventId eventId,
-            LogLevel level,
-            [CanBeNull] string eventIdCode,
-            [NotNull] string messageFormat)
-            : base(eventId, level, eventIdCode)
+            : base(loggingOptions, eventId, level, eventIdCode)
         {
             Check.NotEmpty(messageFormat, nameof(messageFormat));
 

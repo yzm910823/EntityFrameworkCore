@@ -1,29 +1,33 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using JetBrains.Annotations;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Update.Internal;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class NavigationFixer : INavigationFixer
     {
         private readonly IChangeDetector _changeDetector;
         private readonly IEntityGraphAttacher _attacher;
-        private readonly bool _sensitiveLoggingEnabled;
         private bool _inFixup;
 
         /// <summary>
@@ -32,15 +36,10 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         public NavigationFixer(
             [NotNull] IChangeDetector changeDetector,
-            [NotNull] IEntityGraphAttacher attacher,
-            [NotNull] ILoggingOptions loggingOptions)
+            [NotNull] IEntityGraphAttacher attacher)
         {
             _changeDetector = changeDetector;
             _attacher = attacher;
-            if (loggingOptions.IsSensitiveDataLoggingEnabled)
-            {
-                _sensitiveLoggingEnabled = true;
-            }
         }
 
         /// <summary>
@@ -95,7 +94,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
                                     if (ReferenceEquals(victimDependentEntry[navigation], newTargetEntry.Entity)
                                         && victimDependentEntry.StateManager
-                                            .TryGetEntry(victimDependentEntry.Entity, targetEntityType) != null)
+                                            .TryGetEntry(victimDependentEntry.Entity, navigation.DeclaringEntityType) != null)
                                     {
                                         SetNavigation(victimDependentEntry, navigation, null);
                                     }
@@ -185,10 +184,14 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             {
                 stateManager.RecordReferencedUntrackedEntity(newValue, navigation, entry);
                 entry.SetRelationshipSnapshotValue(navigation, newValue);
-                newTargetEntry = targetEntityType.HasDefiningNavigation()
-                    ? stateManager.GetOrCreateEntry(newValue, targetEntityType)
-                    : stateManager.GetOrCreateEntry(newValue);
-                _attacher.AttachGraph(newTargetEntry, EntityState.Added, forceStateWhenUnknownKey: false);
+
+                newTargetEntry = stateManager.GetOrCreateEntry(newValue, targetEntityType);
+
+                _attacher.AttachGraph(
+                    newTargetEntry,
+                    EntityState.Added,
+                    EntityState.Modified,
+                    forceStateWhenUnknownKey: false);
             }
         }
 
@@ -245,9 +248,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
             foreach (var newValue in added)
             {
-                var newTargetEntry = targetEntityType.HasDefiningNavigation()
-                    ? stateManager.GetOrCreateEntry(newValue, targetEntityType)
-                    : stateManager.GetOrCreateEntry(newValue);
+                var newTargetEntry = stateManager.GetOrCreateEntry(newValue, targetEntityType);
 
                 if (newTargetEntry.EntityState != EntityState.Detached)
                 {
@@ -278,7 +279,12 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 else
                 {
                     stateManager.RecordReferencedUntrackedEntity(newValue, navigation, entry);
-                    _attacher.AttachGraph(newTargetEntry, EntityState.Added, forceStateWhenUnknownKey: false);
+
+                    _attacher.AttachGraph(
+                        newTargetEntry,
+                        EntityState.Added,
+                        EntityState.Modified,
+                        forceStateWhenUnknownKey: false);
                 }
 
                 entry.AddToCollectionSnapshot(navigation, newValue);
@@ -354,7 +360,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                                     ConditionallyNullForeignKeyProperties(targetDependentEntry, newPrincipalEntry, foreignKey);
 
                                     if (ReferenceEquals(targetDependentEntry[dependentToPrincipal], newPrincipalEntry.Entity)
-                                        && targetDependentEntry.StateManager.TryGetEntry(targetDependentEntry.Entity, foreignKey.DeclaringEntityType) != null)
+                                        && targetDependentEntry.StateManager.TryGetEntry(
+                                            targetDependentEntry.Entity, foreignKey.DeclaringEntityType) != null)
                                     {
                                         SetNavigation(targetDependentEntry, dependentToPrincipal, null);
                                     }
@@ -395,6 +402,17 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     // Propagate principal key values into FKs
                     foreach (var foreignKey in key.GetReferencingForeignKeys())
                     {
+                        foreach (var dependentEntry in stateManager
+                            .GetDependentsUsingRelationshipSnapshot(entry, foreignKey).ToList())
+                        {
+                            SetForeignKeyProperties(dependentEntry, entry, foreignKey, setModified: true);
+                        }
+
+                        if (foreignKey.IsOwnership)
+                        {
+                            continue;
+                        }
+
                         // Fix up dependents that have been added by propagating through different foreign key
                         foreach (var dependentEntry in stateManager.GetDependents(entry, foreignKey).ToList())
                         {
@@ -416,11 +434,6 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                                     SetNavigation(dependentEntry, dependentToPrincipal, entry);
                                 }
                             }
-                        }
-
-                        foreach (var dependentEntry in stateManager.GetDependentsUsingRelationshipSnapshot(entry, foreignKey).ToList())
-                        {
-                            SetForeignKeyProperties(dependentEntry, entry, foreignKey, setModified: true);
                         }
                     }
                 }
@@ -517,10 +530,21 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             foreach (var foreignKey in entityType.GetReferencingForeignKeys())
             {
                 var dependentToPrincipal = foreignKey.DependentToPrincipal;
-                if (dependentToPrincipal != null)
+                if (dependentToPrincipal == null
+                    && !foreignKey.IsOwnership)
                 {
-                    var dependentEntries = stateManager.GetDependents(entry, foreignKey);
-                    foreach (var dependentEntry in dependentEntries)
+                    continue;
+                }
+
+                var dependentEntries = stateManager.GetDependents(entry, foreignKey);
+                foreach (var dependentEntry in dependentEntries.ToList())
+                {
+                    if (foreignKey.IsOwnership)
+                    {
+                        ConditionallyNullForeignKeyProperties(dependentEntry, entry, foreignKey);
+                    }
+
+                    if (dependentToPrincipal != null)
                     {
                         if (dependentEntry[dependentToPrincipal] == entry.Entity)
                         {
@@ -536,10 +560,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             ISet<IForeignKey> handledForeignKeys,
             bool fromQuery)
         {
-            var entityType = (EntityType)entry.EntityType;
+            var entityType = entry.EntityType;
             var stateManager = entry.StateManager;
-            IForeignKey conflictingPrincipalForeignKey = null;
-            var matchingPrincipal = false;
 
             foreach (var foreignKey in entityType.GetForeignKeys())
             {
@@ -548,51 +570,18 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     var principalEntry = stateManager.GetPrincipal(entry, foreignKey);
                     if (principalEntry != null)
                     {
-                        if (!foreignKey.PrincipalEntityType.IsAssignableFrom(principalEntry.EntityType))
-                        {
-                            conflictingPrincipalForeignKey = foreignKey;
-                        }
-                        else
-                        {
-                            matchingPrincipal = true;
+                        // Set navigation to principal based on FK properties
+                        SetNavigation(entry, foreignKey.DependentToPrincipal, principalEntry);
 
-                            // Set navigation to principal based on FK properties
-                            SetNavigation(entry, foreignKey.DependentToPrincipal, principalEntry);
-
-                            // Add this entity to principal's collection, or set inverse for 1:1
-                            ToDependentFixup(entry, principalEntry, foreignKey);
-                        }
+                        // Add this entity to principal's collection, or set inverse for 1:1
+                        ToDependentFixup(entry, principalEntry, foreignKey);
                     }
                 }
             }
 
-            if (!matchingPrincipal
-                && conflictingPrincipalForeignKey != null)
-            {
-                var principalEntry = stateManager.GetPrincipal(entry, conflictingPrincipalForeignKey);
-
-                if (_sensitiveLoggingEnabled)
-                {
-                    throw new InvalidOperationException(
-                        CoreStrings.IncompatiblePrincipalEntrySensitive(
-                            entry.BuildCurrentValuesString(conflictingPrincipalForeignKey.Properties),
-                            entityType.DisplayName(),
-                            entry.BuildOriginalValuesString(entityType.FindPrimaryKey().Properties),
-                            principalEntry.EntityType.DisplayName(),
-                            conflictingPrincipalForeignKey.PrincipalEntityType.DisplayName()));
-                }
-
-                throw new InvalidOperationException(
-                    CoreStrings.IncompatiblePrincipalEntry(
-                        Property.Format(conflictingPrincipalForeignKey.Properties),
-                        entityType.DisplayName(),
-                        principalEntry.EntityType.DisplayName(),
-                        conflictingPrincipalForeignKey.PrincipalEntityType.DisplayName()));
-            }
-
             foreach (var foreignKey in entityType.GetReferencingForeignKeys())
             {
-                if (!foreignKey.DeclaringEntityType.IsQueryType
+                if (foreignKey.DeclaringEntityType.FindPrimaryKey() != null
                     && handledForeignKeys?.Contains(foreignKey) != true)
                 {
                     var dependents = stateManager.GetDependents(entry, foreignKey);
@@ -601,9 +590,19 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         var dependentEntry = dependents.FirstOrDefault();
                         if (dependentEntry != null)
                         {
-                            // Set navigations to and from principal entity that is indicated by FK
-                            SetNavigation(entry, foreignKey.PrincipalToDependent, dependentEntry);
-                            SetNavigation(dependentEntry, foreignKey.DependentToPrincipal, entry);
+                            if (foreignKey.PrincipalToDependent != null
+                                && entry[foreignKey.PrincipalToDependent] != null
+                                && entry[foreignKey.PrincipalToDependent] != dependentEntry.Entity)
+                            {
+                                // Clear the dependent FK, since the navigation already points to a different dependent
+                                ConditionallyNullForeignKeyProperties(dependentEntry, entry, foreignKey);
+                            }
+                            else
+                            {
+                                // Set navigations to and from principal entity that is indicated by FK
+                                SetNavigation(entry, foreignKey.PrincipalToDependent, dependentEntry);
+                                SetNavigation(dependentEntry, foreignKey.DependentToPrincipal, entry);
+                            }
                         }
                     }
                     else
@@ -623,12 +622,11 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             // truth and not attempt to ascertain relationships from navigation properties
             if (!fromQuery)
             {
-                var setModified = entry.EntityState != EntityState.Unchanged
-                                  && entry.EntityState != EntityState.Modified;
+                var setModified = entry.EntityState != EntityState.Unchanged;
 
                 foreach (var foreignKey in entityType.GetReferencingForeignKeys())
                 {
-                    if (!foreignKey.DeclaringEntityType.IsQueryType)
+                    if (foreignKey.DeclaringEntityType.FindPrimaryKey() != null)
                     {
                         var principalToDependent = foreignKey.PrincipalToDependent;
                         if (principalToDependent != null)
@@ -716,8 +714,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
             if (navigationValue != null)
             {
-                var setModified = referencedEntry.EntityState != EntityState.Unchanged
-                                  && referencedEntry.EntityState != EntityState.Modified;
+                var setModified = referencedEntry.EntityState != EntityState.Unchanged;
 
                 if (!navigation.IsDependentToPrincipal())
                 {
@@ -830,6 +827,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     {
                         dependentEntry.SetProperty(dependentProperty, principalValue, setModified);
                     }
+
                     dependentEntry.StateManager.UpdateDependentMap(dependentEntry, foreignKey);
                     dependentEntry.SetRelationshipSnapshotValue(dependentProperty, principalValue);
                 }
@@ -855,6 +853,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             var principalProperties = foreignKey.PrincipalKey.Properties;
             var dependentProperties = foreignKey.Properties;
             var hasOnlyKeyProperties = true;
+
+            var currentPrincipal = dependentEntry.StateManager.GetPrincipal(dependentEntry, foreignKey);
+            if (currentPrincipal != null
+                && currentPrincipal != principalEntry)
+            {
+                return;
+            }
 
             if (principalEntry != null
                 && principalEntry.EntityState != EntityState.Detached)

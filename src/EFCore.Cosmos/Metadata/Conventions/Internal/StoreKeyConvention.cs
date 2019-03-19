@@ -2,10 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.EntityFrameworkCore.Cosmos.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Cosmos.ValueGeneration.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.ValueGeneration.Internal;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata.Conventions.Internal
@@ -24,14 +25,15 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata.Conventions.Internal
             var entityType = entityTypeBuilder.Metadata;
             if (entityType.BaseType == null
                 && entityType.IsDocumentRoot()
-                && !entityType.IsQueryType)
+                && !entityType.IsKeyless)
             {
                 var idProperty = entityTypeBuilder.Property(IdPropertyName, typeof(string), ConfigurationSource.Convention);
-                idProperty.HasValueGenerator((_, __) => new StringValueGenerator(generateTemporaryValues: false), ConfigurationSource.Convention);
+                idProperty.HasValueGenerator((_, __) => new IdValueGenerator(), ConfigurationSource.Convention);
                 entityTypeBuilder.HasKey(new[] { idProperty.Metadata }, ConfigurationSource.Convention);
 
                 var jObjectProperty = entityTypeBuilder.Property(JObjectPropertyName, typeof(JObject), ConfigurationSource.Convention);
                 jObjectProperty.Cosmos(ConfigurationSource.Convention).ToProperty("");
+                jObjectProperty.ValueGenerated(ValueGenerated.OnAddOrUpdate, ConfigurationSource.Convention);
             }
             else
             {
@@ -64,7 +66,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata.Conventions.Internal
 
         public Annotation Apply(InternalEntityTypeBuilder entityTypeBuilder, string name, Annotation annotation, Annotation oldAnnotation)
         {
-            if(name == CosmosAnnotationNames.ContainerName)
+            if (name == CosmosAnnotationNames.ContainerName)
             {
                 Apply(entityTypeBuilder);
             }

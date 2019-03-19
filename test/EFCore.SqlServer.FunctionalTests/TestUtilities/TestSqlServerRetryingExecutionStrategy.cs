@@ -21,7 +21,10 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
 
         public TestSqlServerRetryingExecutionStrategy()
             : base(
-                new DbContext(new DbContextOptionsBuilder().UseSqlServer(TestEnvironment.DefaultConnection).Options),
+                new DbContext(
+                    new DbContextOptionsBuilder()
+                        .EnableServiceProviderCaching(false)
+                        .UseSqlServer(TestEnvironment.DefaultConnection).Options),
                 DefaultMaxRetryCount, DefaultMaxDelay, _additionalErrorNumbers)
         {
         }
@@ -62,7 +65,7 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
             }
 
             return exception is InvalidOperationException invalidOperationException
-                && invalidOperationException.Message == "Internal .Net Framework Data Provider error 6."
+                   && invalidOperationException.Message == "Internal .Net Framework Data Provider error 6."
                 ? true
                 : false;
         }

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
@@ -199,7 +200,8 @@ namespace Microsoft.EntityFrameworkCore
 
         private class FakeRelationalCommandBuilderFactory : IRelationalCommandBuilderFactory
         {
-            public IRelationalCommandBuilder Create() => new FakeRelationalCommandBuilder();
+            public IRelationalCommandBuilder Create(IDiagnosticsLogger<DbLoggerCategory.Database.Command> logger)
+                => new FakeRelationalCommandBuilder();
         }
 
         private class FakeRelationalCommandBuilder : IRelationalCommandBuilder
@@ -224,7 +226,9 @@ namespace Microsoft.EntityFrameworkCore
                 return 0;
             }
 
-            public Task<int> ExecuteNonQueryAsync(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = default)
+            public Task<int> ExecuteNonQueryAsync(
+                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                CancellationToken cancellationToken = default)
                 => Task.FromResult(0);
 
             public RelationalDataReader ExecuteReader(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues)
@@ -232,7 +236,9 @@ namespace Microsoft.EntityFrameworkCore
                 throw new NotImplementedException();
             }
 
-            public Task<RelationalDataReader> ExecuteReaderAsync(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = default)
+            public Task<RelationalDataReader> ExecuteReaderAsync(
+                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                CancellationToken cancellationToken = default)
             {
                 throw new NotImplementedException();
             }
@@ -242,7 +248,9 @@ namespace Microsoft.EntityFrameworkCore
                 throw new NotImplementedException();
             }
 
-            public Task<object> ExecuteScalarAsync(IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues, CancellationToken cancellationToken = default)
+            public Task<object> ExecuteScalarAsync(
+                IRelationalConnection connection, IReadOnlyDictionary<string, object> parameterValues,
+                CancellationToken cancellationToken = default)
             {
                 throw new NotImplementedException();
             }

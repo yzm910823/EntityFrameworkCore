@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -486,7 +487,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         {
             var model = BuildModel();
             var entityType = model.FindEntityType(typeof(SomeEntity).FullName);
-            var keyProperty = entityType.FindProperty("Id");
+            var nameProperty = entityType.FindProperty("Name");
             var configuration = InMemoryTestHelpers.Instance.CreateContextServices(model);
 
             var entry = CreateInternalEntry(
@@ -499,9 +500,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 },
                 new ValueBuffer(new object[] { 1, "Kool" }));
 
-            entry[keyProperty] = 77;
+            entry[nameProperty] = "Mule";
 
-            Assert.Equal(77, entry[keyProperty]);
+            Assert.Equal("Mule", entry[nameProperty]);
         }
 
         [Fact]
@@ -1103,7 +1104,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
             entry.AcceptChanges();
 
-            Assert.Equal(entityState == EntityState.Deleted || entityState == EntityState.Detached ? EntityState.Detached : EntityState.Unchanged, entry.EntityState);
+            Assert.Equal(
+                entityState == EntityState.Deleted || entityState == EntityState.Detached ? EntityState.Detached : EntityState.Unchanged,
+                entry.EntityState);
             if (entityState == EntityState.Unchanged)
             {
                 Assert.Equal("Kool", entry[valueProperty]);
@@ -1112,7 +1115,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             else
             {
                 Assert.Equal("Pickle", entry[valueProperty]);
-                Assert.Equal(entityState == EntityState.Detached || entityState == EntityState.Deleted ? "Cheese" : "Pickle", entry.GetOriginalValue(valueProperty));
+                Assert.Equal(
+                    entityState == EntityState.Detached || entityState == EntityState.Deleted ? "Cheese" : "Pickle",
+                    entry.GetOriginalValue(valueProperty));
             }
         }
 
@@ -1246,7 +1251,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             entry.SetEntityState(EntityState.Unchanged);
 
             entry[fkProperty] = null;
-            entry.HandleConceptualNulls(false);
+            entry.HandleConceptualNulls(false, force: false, isCascadeDelete: false);
 
             Assert.Equal(EntityState.Deleted, entry.EntityState);
         }
@@ -1264,7 +1269,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             entry.SetEntityState(EntityState.Added);
 
             entry[fkProperty] = null;
-            entry.HandleConceptualNulls(false);
+            entry.HandleConceptualNulls(false, force: false, isCascadeDelete: false);
 
             Assert.Equal(EntityState.Detached, entry.EntityState);
         }
@@ -1277,7 +1282,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             var fkProperty1 = entityType.FindProperty("FirstId1");
             var fkProperty2 = entityType.FindProperty("FirstId2");
 
-            var entry = CreateInternalEntry(InMemoryTestHelpers.Instance.CreateContextServices(model), entityType, new CompositeSecondDependent());
+            var entry = CreateInternalEntry(
+                InMemoryTestHelpers.Instance.CreateContextServices(model), entityType, new CompositeSecondDependent());
 
             entry[entityType.FindProperty("Id1")] = 66;
             entry[entityType.FindProperty("Id2")] = "Bar";
@@ -1286,7 +1292,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             entry.SetEntityState(EntityState.Unchanged);
 
             entry[fkProperty1] = null;
-            entry.HandleConceptualNulls(false);
+            entry.HandleConceptualNulls(false, force: false, isCascadeDelete: false);
 
             Assert.Equal(EntityState.Deleted, entry.EntityState);
         }
@@ -1299,7 +1305,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             var fkProperty1 = entityType.FindProperty("FirstId1");
             var fkProperty2 = entityType.FindProperty("FirstId2");
 
-            var entry = CreateInternalEntry(InMemoryTestHelpers.Instance.CreateContextServices(model), entityType, new CompositeSecondDependent());
+            var entry = CreateInternalEntry(
+                InMemoryTestHelpers.Instance.CreateContextServices(model), entityType, new CompositeSecondDependent());
 
             entry[entityType.FindProperty("Id1")] = 66;
             entry[entityType.FindProperty("Id2")] = "Bar";
@@ -1308,87 +1315,12 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             entry.SetEntityState(EntityState.Unchanged);
 
             entry[fkProperty1] = null;
-            entry.HandleConceptualNulls(false);
+            entry.HandleConceptualNulls(false, force: false, isCascadeDelete: false);
 
             Assert.Equal(EntityState.Modified, entry.EntityState);
 
             Assert.Equal(77, entry[fkProperty1]);
             Assert.Null(entry[fkProperty2]);
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void Unchanged_entity_with_conceptually_null_FK_without_cascade_delete_throws(bool sensitiveLoggingEnabled)
-        {
-            var model = BuildModel();
-            var entityType = model.FindEntityType(typeof(SomeDependentEntity).FullName);
-            var keyProperties = new[] { entityType.FindProperty("Id1"), entityType.FindProperty("Id2") };
-            var fkProperty = entityType.FindProperty("SomeEntityId");
-            var configuration = InMemoryTestHelpers.Instance.CreateContextServices(model);
-
-            var entry = CreateInternalEntry(configuration, entityType, new SomeDependentEntity());
-            entry.SetOriginalValue(keyProperties[0], 77);
-            entry.SetOriginalValue(keyProperties[1], "ReadySalted");
-            entry[keyProperties[0]] = 77;
-            entry[keyProperties[1]] = "ReadySalted";
-            entry[fkProperty] = 99;
-
-            entry.SetEntityState(EntityState.Unchanged);
-            entry[fkProperty] = null;
-
-            var exception = Assert.Throws<InvalidOperationException>(() => entry.HandleConceptualNulls(sensitiveLoggingEnabled)).Message;
-            if (sensitiveLoggingEnabled)
-            {
-                Assert.Equal(
-                    CoreStrings.RelationshipConceptualNullSensitive(
-                        model.FindEntityType(typeof(SomeEntity).FullName).DisplayName(),
-                        entityType.DisplayName(),
-                        "{Id1: 77, Id2: ReadySalted}"), exception);
-            }
-            else
-            {
-                Assert.Equal(
-                    CoreStrings.RelationshipConceptualNull(
-                        model.FindEntityType(typeof(SomeEntity).FullName).DisplayName(),
-                        entityType.DisplayName()), exception);
-            }
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void Unchanged_entity_with_conceptually_null_non_FK_property_throws(bool sensitiveLoggingEnabled)
-        {
-            var model = BuildModel();
-            var entityType = model.FindEntityType(typeof(SomeDependentEntity).FullName);
-            var keyProperties = new[] { entityType.FindProperty("Id1"), entityType.FindProperty("Id2") };
-            var property = entityType.FindProperty("JustAProperty");
-            var configuration = InMemoryTestHelpers.Instance.CreateContextServices(model);
-
-            var entry = CreateInternalEntry(configuration, entityType, new SomeDependentEntity());
-            entry.SetOriginalValue(keyProperties[0], 77);
-            entry.SetOriginalValue(keyProperties[1], "ReadySalted");
-            entry[keyProperties[0]] = 77;
-            entry[keyProperties[1]] = "ReadySalted";
-            entry[property] = 99;
-
-            entry.SetEntityState(EntityState.Unchanged);
-            entry[property] = null;
-
-            var exception = Assert.Throws<InvalidOperationException>(() => entry.HandleConceptualNulls(sensitiveLoggingEnabled)).Message;
-            if (sensitiveLoggingEnabled)
-            {
-                Assert.Equal(
-                    CoreStrings.PropertyConceptualNullSensitive("JustAProperty", entityType.DisplayName(), "{Id1: 77, Id2: ReadySalted}"),
-                    exception);
-            }
-            else
-            {
-                Assert.Equal(
-                    CoreStrings.PropertyConceptualNull("JustAProperty", entityType.DisplayName()),
-                    exception);
-            }
         }
 
         // ReSharper disable once ClassNeverInstantiated.Local
@@ -1450,23 +1382,17 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             public CompositeFirstDependent First { get; set; }
         }
 
-        protected virtual InternalEntityEntry CreateInternalEntry(IServiceProvider contextServices, IEntityType entityType, object entity)
-        {
-            var entry = new InternalEntityEntryFactory()
-                .Create(contextServices.GetRequiredService<IStateManager>(), entityType, entity);
+        protected virtual InternalEntityEntry CreateInternalEntry(
+            IServiceProvider contextServices, IEntityType entityType, object entity)
+            => contextServices
+                .GetRequiredService<IStateManager>()
+                .GetOrCreateEntry(entity, entityType);
 
-            contextServices.GetRequiredService<IInternalEntityEntrySubscriber>().SnapshotAndSubscribe(entry);
-            return entry;
-        }
-
-        protected virtual InternalEntityEntry CreateInternalEntry(IServiceProvider contextServices, IEntityType entityType, object entity, in ValueBuffer valueBuffer)
-        {
-            var entry = new InternalEntityEntryFactory()
-                .Create(contextServices.GetRequiredService<IStateManager>(), entityType, entity, valueBuffer);
-
-            contextServices.GetRequiredService<IInternalEntityEntrySubscriber>().SnapshotAndSubscribe(entry);
-            return entry;
-        }
+        protected virtual InternalEntityEntry CreateInternalEntry(
+            IServiceProvider contextServices, IEntityType entityType, object entity, in ValueBuffer valueBuffer)
+            => contextServices
+                .GetRequiredService<IStateManager>()
+                .StartTrackingFromQuery(entityType, entity, valueBuffer, new HashSet<IForeignKey>());
 
         protected virtual Model BuildModel()
         {
@@ -1524,7 +1450,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 eb =>
                 {
                     eb.HasKey(e => e.Id);
-                    var owned = eb.OwnsOne(e => e.Owned).HasForeignKey("Id");
+                    var owned = eb.OwnsOne(e => e.Owned);
+                    owned.WithOwner().HasForeignKey("Id");
                     owned.HasKey("Id");
                     owned.Property(e => e.Value);
                 });

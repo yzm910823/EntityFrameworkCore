@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -55,6 +56,7 @@ namespace Microsoft.EntityFrameworkCore
                 = (from sd in serviceCollection
                    where sd.ServiceType.Namespace.StartsWith("Microsoft.Entity", StringComparison.Ordinal)
                          && sd.ServiceType != typeof(IDiagnosticsLogger<>)
+                             && sd.ServiceType != typeof(LoggingDefinitions)
                    let it = TryGetImplementationType(sd)
                    where !it.IsInterface
                    let ns = it.Namespace
@@ -161,7 +163,8 @@ namespace Microsoft.EntityFrameworkCore
                           || !type.GetTypeInfo().IsInterface && interfaceMappings.Any(im => im.TargetMethods.Contains(method))
                           || events.Any(e => e.AddMethod == method || e.RemoveMethod == method)
                           || parameterType.GetTypeInfo().IsValueType && !parameterType.GetTypeInfo().IsNullableType())
-                         && attributes.Any(a => a.GetType().Name == nameof(NotNullAttribute) || a.GetType().Name == nameof(CanBeNullAttribute))
+                         && attributes.Any(
+                             a => a.GetType().Name == nameof(NotNullAttribute) || a.GetType().Name == nameof(CanBeNullAttribute))
                          || parameterType.GetTypeInfo().IsValueType
                          && parameterType.GetTypeInfo().IsNullableType()
                          && attributes.Any(a => a.GetType().Name == nameof(CanBeNullAttribute))

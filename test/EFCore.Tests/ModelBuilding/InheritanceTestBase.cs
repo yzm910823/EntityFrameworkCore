@@ -44,7 +44,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
                 modelBuilder.Entity<SpecialBookLabel>().Property(b => b.BookId);
 
-                modelBuilder.Validate();
+                modelBuilder.FinalizeModel();
 
                 var model = modelBuilder.Model;
                 Assert.Equal(0, model.FindEntityType(typeof(ExtraSpecialBookLabel)).GetDeclaredProperties().Count());
@@ -62,7 +62,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 modelBuilder.Entity<ExtraSpecialBookLabel>();
                 modelBuilder.Entity<SpecialBookLabel>().Ignore(b => b.BookLabel);
 
-                modelBuilder.Validate();
+                modelBuilder.FinalizeModel();
 
                 var model = modelBuilder.Model;
                 var moreDerived = model.FindEntityType(typeof(ExtraSpecialBookLabel));
@@ -86,7 +86,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                     });
                 modelBuilder.Entity<SelfRefManyToOne>();
 
-                modelBuilder.Validate();
+                modelBuilder.FinalizeModel();
 
                 var model = modelBuilder.Model;
                 Assert.Equal(0, model.FindEntityType(typeof(SelfRefManyToOneDerived)).GetDeclaredProperties().Count());
@@ -117,7 +117,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 var ingredient = ingredientBuilder.Metadata;
 
                 Assert.Same(typeof(Ingredient), pickle.BaseType.ClrType);
-                AssertEqual(initialProperties, pickle.GetProperties().Where(p => p.Name != "Discriminator"), new PropertyComparer(compareAnnotations: false));
+                AssertEqual(
+                    initialProperties, pickle.GetProperties().Where(p => p.Name != "Discriminator"),
+                    new PropertyComparer(compareAnnotations: false));
                 AssertEqual(initialKeys, pickle.GetKeys());
                 AssertEqual(initialIndexes, pickle.GetIndexes());
                 AssertEqual(initialForeignKeys, pickle.GetForeignKeys());
@@ -132,7 +134,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 AssertEqual(initialForeignKeys, pickle.GetForeignKeys());
                 AssertEqual(initialReferencingForeignKeys, pickle.GetReferencingForeignKeys());
 
-                AssertEqual(initialProperties, ingredient.GetProperties().Where(p => p.Name != "Discriminator"), new PropertyComparer(compareAnnotations: false));
+                AssertEqual(
+                    initialProperties, ingredient.GetProperties().Where(p => p.Name != "Discriminator"),
+                    new PropertyComparer(compareAnnotations: false));
                 AssertEqual(initialKeys, ingredient.GetKeys());
                 AssertEqual(initialIndexes, ingredient.GetIndexes());
                 Assert.Equal(initialForeignKeys.Count(), ingredient.GetForeignKeys().Count());
@@ -520,12 +524,6 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 AssertEqual(initialIndexes, derivedDependentEntityType.GetIndexes());
                 AssertEqual(initialForeignKeys, derivedDependentEntityType.GetForeignKeys());
 
-                modelBuilder.Validate();
-
-                var (Level, _, Message, _, _) = modelBuilder.ModelLoggerFactory.Log.Single(e => e.Id == CoreEventId.RedundantIndexRemoved);
-                Assert.Equal(LogLevel.Debug, Level);
-                Assert.Equal(CoreStrings.LogRedundantIndexRemoved.GenerateMessage("{'CustomerId'}", nameof(Order), "{'CustomerId', 'AnotherCustomerId'}"), Message);
-
                 principalEntityBuilder.HasOne<Order>().WithOne()
                     .HasPrincipalKey<Customer>(
                         c => new
@@ -537,6 +535,14 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                         {
                             o.CustomerId
                         });
+
+                modelBuilder.FinalizeModel();
+
+                var (Level, _, Message, _, _) = modelBuilder.ModelLoggerFactory.Log.Single(e => e.Id == CoreEventId.RedundantIndexRemoved);
+                Assert.Equal(LogLevel.Debug, Level);
+                Assert.Equal(
+                    CoreStrings.LogRedundantIndexRemoved(new TestLogger<LoggingDefinitions>()).GenerateMessage(
+                        "{'CustomerId'}", nameof(Order), "{'CustomerId', 'AnotherCustomerId'}"), Message);
 
                 fk = dependentEntityType.GetForeignKeys().Single(foreignKey => foreignKey.DependentToPrincipal == null);
                 Assert.Equal(2, dependentEntityType.GetIndexes().Count());
@@ -578,8 +584,6 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                             o.CustomerId
                         });
 
-                modelBuilder.Validate();
-
                 var dependentEntityType = dependentEntityBuilder.Metadata;
                 var derivedDependentEntityType = derivedDependentEntityBuilder.Metadata;
                 var index = dependentEntityType.FindIndex(dependentEntityType.GetForeignKeys().Single().Properties);
@@ -603,7 +607,12 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
                 derivedDependentEntityBuilder.HasBaseType<Order>();
 
-                modelBuilder.Validate();
+                modelBuilder.FinalizeModel();
+
+                var indexRemoveMessage =
+                    CoreStrings.LogRedundantIndexRemoved(new TestLogger<LoggingDefinitions>()).GenerateMessage(
+                        "{'CustomerId'}", nameof(Order), "{'CustomerId', 'AnotherCustomerId'}");
+                Assert.Equal(1, modelBuilder.ModelLoggerFactory.Log.Count(l => l.Message == indexRemoveMessage));
 
                 var baseFK = dependentEntityType.GetForeignKeys().Single();
                 var baseIndex = dependentEntityType.FindIndex(baseFK.Properties);
@@ -612,25 +621,10 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 Assert.False(derivedDependentEntityType.GetDeclaredForeignKeys().Single().IsUnique);
                 Assert.Empty(derivedDependentEntityType.GetDeclaredIndexes());
 
-                AssertEqual(initialProperties, derivedDependentEntityType.GetProperties());
+                AssertEqual(initialProperties, derivedDependentEntityType.GetProperties(), new PropertyComparer(false));
                 AssertEqual(initialKeys, derivedDependentEntityType.GetKeys());
                 AssertEqual(initialIndexes, derivedDependentEntityType.GetIndexes());
                 AssertEqual(initialForeignKeys, derivedDependentEntityType.GetForeignKeys());
-
-                var indexRemoveMessage =
-                    CoreStrings.LogRedundantIndexRemoved.GenerateMessage("{'CustomerId'}", nameof(Order), "{'CustomerId', 'AnotherCustomerId'}");
-                Assert.Equal(2, modelBuilder.ModelLoggerFactory.Log.Count(l => l.Message == indexRemoveMessage));
-
-                dependentEntityBuilder.HasIndex(
-                        o => new
-                        {
-                            o.CustomerId,
-                            o.AnotherCustomerId
-                        })
-                    .IsUnique(false);
-
-                Assert.True(dependentEntityType.GetIndexes().All(i => !i.IsUnique));
-                Assert.Empty(derivedDependentEntityType.GetDeclaredIndexes());
             }
 
             [Fact]
@@ -755,11 +749,12 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 Assert.Empty(modelBuilder.Model.FindEntityType(typeof(CityViewModel)).GetForeignKeys());
 
                 modelBuilder.Entity<CityViewModel>();
-                modelBuilder.Validate();
+                modelBuilder.FinalizeModel();
             }
 
             [Fact]
-            public virtual void Can_remove_objects_in_derived_type_which_was_set_using_data_annotation_while_setting_base_type_by_convention()
+            public virtual void
+                Can_remove_objects_in_derived_type_which_was_set_using_data_annotation_while_setting_base_type_by_convention()
             {
                 var modelBuilder = CreateModelBuilder();
 
@@ -768,7 +763,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
                 Assert.Equal(baseEntityType, derivedEntityType.BaseType);
                 Assert.Equal(ConfigurationSource.DataAnnotation, baseEntityType.GetPrimaryKeyConfigurationSource());
-                Assert.Equal(ConfigurationSource.DataAnnotation, baseEntityType.FindNavigation(nameof(BaseTypeWithKeyAnnotation.Navigation)).ForeignKey.GetConfigurationSource());
+                Assert.Equal(
+                    ConfigurationSource.DataAnnotation,
+                    baseEntityType.FindNavigation(nameof(BaseTypeWithKeyAnnotation.Navigation)).ForeignKey.GetConfigurationSource());
                 Assert.Equal(ConfigurationSource.Convention, derivedEntityType.GetBaseTypeConfigurationSource());
             }
 
@@ -779,14 +776,19 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
                 var derivedEntityTypeBuilder = modelBuilder.Entity<DerivedTypeWithKeyAnnotation>();
                 derivedEntityTypeBuilder.HasKey(e => e.MyPrimaryKey);
-                derivedEntityTypeBuilder.HasOne(e => e.Navigation).WithOne().HasForeignKey<DerivedTypeWithKeyAnnotation>(e => e.MyPrimaryKey);
+                derivedEntityTypeBuilder.HasOne(e => e.Navigation).WithOne()
+                    .HasForeignKey<DerivedTypeWithKeyAnnotation>(e => e.MyPrimaryKey);
                 var derivedEntityType = (EntityType)derivedEntityTypeBuilder.Metadata;
                 var baseEntityType = (EntityType)modelBuilder.Entity<BaseTypeWithKeyAnnotation>().Metadata;
 
                 Assert.Null(derivedEntityType.BaseType);
                 Assert.Equal(ConfigurationSource.DataAnnotation, baseEntityType.GetPrimaryKeyConfigurationSource());
-                Assert.Equal(ConfigurationSource.DataAnnotation, baseEntityType.FindNavigation(nameof(BaseTypeWithKeyAnnotation.Navigation)).ForeignKey.GetConfigurationSource());
-                Assert.Equal(ConfigurationSource.Explicit, derivedEntityType.FindNavigation(nameof(DerivedTypeWithKeyAnnotation.Navigation)).ForeignKey.GetConfigurationSource());
+                Assert.Equal(
+                    ConfigurationSource.DataAnnotation,
+                    baseEntityType.FindNavigation(nameof(BaseTypeWithKeyAnnotation.Navigation)).ForeignKey.GetConfigurationSource());
+                Assert.Equal(
+                    ConfigurationSource.Explicit,
+                    derivedEntityType.FindNavigation(nameof(DerivedTypeWithKeyAnnotation.Navigation)).ForeignKey.GetConfigurationSource());
                 Assert.Equal(ConfigurationSource.Explicit, derivedEntityType.GetPrimaryKeyConfigurationSource());
             }
 

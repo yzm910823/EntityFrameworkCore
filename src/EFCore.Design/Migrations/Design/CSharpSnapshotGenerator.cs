@@ -71,7 +71,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
                 stringBuilder.AppendLine(";");
             }
 
-            GenerateEntityTypes(builderName, Sort(model.GetEntityTypes().Where(et => !et.IsQueryType).ToList()), stringBuilder);
+            GenerateEntityTypes(builderName, Sort(model.GetEntityTypes().Where(et => et.FindPrimaryKey() != null).ToList()), stringBuilder);
         }
 
         private static IReadOnlyList<IEntityType> Sort(IReadOnlyList<IEntityType> entityTypes)
@@ -816,16 +816,29 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
             Check.NotNull(foreignKey, nameof(foreignKey));
             Check.NotNull(stringBuilder, nameof(stringBuilder));
 
-            stringBuilder
-                .Append(builderName)
-                .Append(".HasOne(")
-                .Append(Code.Literal(foreignKey.PrincipalEntityType.Name));
-
-            if (foreignKey.DependentToPrincipal != null)
+            if (!foreignKey.IsOwnership)
             {
                 stringBuilder
+                    .Append(builderName)
+                    .Append(".HasOne(")
+                    .Append(Code.Literal(foreignKey.PrincipalEntityType.Name))
                     .Append(", ")
-                    .Append(Code.Literal(foreignKey.DependentToPrincipal.Name));
+                    .Append(
+                        foreignKey.DependentToPrincipal == null
+                            ? Code.UnknownLiteral(null)
+                            : Code.Literal(foreignKey.DependentToPrincipal.Name));
+            }
+            else
+            {
+                stringBuilder
+                    .Append(builderName)
+                    .Append(".WithOwner(");
+
+                if (foreignKey.DependentToPrincipal != null)
+                {
+                    stringBuilder
+                        .Append(Code.Literal(foreignKey.DependentToPrincipal.Name));
+                }
             }
 
             stringBuilder
@@ -834,7 +847,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
 
             using (stringBuilder.Indent())
             {
-                if (foreignKey.IsUnique)
+                if (foreignKey.IsUnique && !foreignKey.IsOwnership)
                 {
                     stringBuilder
                         .Append(".WithOne(");
@@ -868,17 +881,22 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
                 }
                 else
                 {
-                    stringBuilder
-                        .Append(".WithMany(");
-
-                    if (foreignKey.PrincipalToDependent != null)
+                    if (!foreignKey.IsOwnership)
                     {
                         stringBuilder
-                            .Append(Code.Literal(foreignKey.PrincipalToDependent.Name));
+                            .Append(".WithMany(");
+
+                        if (foreignKey.PrincipalToDependent != null)
+                        {
+                            stringBuilder
+                                .Append(Code.Literal(foreignKey.PrincipalToDependent.Name));
+                        }
+
+                        stringBuilder
+                            .AppendLine(")");
                     }
 
                     stringBuilder
-                        .AppendLine(")")
                         .Append(".HasForeignKey(")
                         .Append(string.Join(", ", foreignKey.Properties.Select(p => Code.Literal(p.Name))))
                         .Append(")");
@@ -895,13 +913,23 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Design
                     }
                 }
 
-                if (foreignKey.DeleteBehavior != DeleteBehavior.ClientSetNull)
+                if (!foreignKey.IsOwnership)
                 {
-                    stringBuilder
-                        .AppendLine()
-                        .Append(".OnDelete(")
-                        .Append(Code.Literal(foreignKey.DeleteBehavior))
-                        .Append(")");
+                    if (foreignKey.DeleteBehavior != DeleteBehavior.ClientSetNull)
+                    {
+                        stringBuilder
+                            .AppendLine()
+                            .Append(".OnDelete(")
+                            .Append(Code.Literal(foreignKey.DeleteBehavior))
+                            .Append(")");
+                    }
+
+                    if (foreignKey.IsRequired)
+                    {
+                        stringBuilder
+                            .AppendLine()
+                            .Append(".IsRequired()");
+                    }
                 }
             }
 

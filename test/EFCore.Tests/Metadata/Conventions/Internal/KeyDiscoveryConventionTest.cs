@@ -4,10 +4,10 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -128,7 +128,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             var logEntry = ListLoggerFactory.Log.Single();
             Assert.Equal(LogLevel.Debug, logEntry.Level);
             Assert.Equal(
-                CoreStrings.LogMultiplePrimaryKeyCandidates.GenerateMessage(
+                CoreStrings.LogMultiplePrimaryKeyCandidates(new TestLogger<LoggingDefinitions>()).GenerateMessage(
                     nameof(EntityWithMultipleIds.ID), nameof(EntityWithMultipleIds.Id), nameof(EntityWithMultipleIds)), logEntry.Message);
         }
 
@@ -145,7 +145,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             var modelLogger = new DiagnosticsLogger<DbLoggerCategory.Model>(
                 ListLoggerFactory,
                 options,
-                new DiagnosticListener("Fake"));
+                new DiagnosticListener("Fake"),
+                new LoggingDefinitions());
             return modelLogger;
         }
 
@@ -155,7 +156,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
             var entityBuilder = modelBuilder.Entity(typeof(T), ConfigurationSource.Convention);
 
             new PropertyDiscoveryConvention(
-                    TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>())
+                    TestServiceFactory.Instance.Create<InMemoryTypeMappingSource>(),
+                    new TestLogger<DbLoggerCategory.Model, LoggingDefinitions>())
                 .Apply(entityBuilder);
 
             return entityBuilder;

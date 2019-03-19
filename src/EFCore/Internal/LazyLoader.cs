@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,16 +12,28 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
+
+#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Transient"/>. This means that each
+    ///         entity instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
-    public class LazyLoader : ILazyLoader, IDisposable
+    public class LazyLoader : ILazyLoader
     {
         private bool _disposed;
+        private IDictionary<string, bool>? _loadedStates;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -41,6 +54,23 @@ namespace Microsoft.EntityFrameworkCore.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
+        public virtual void SetLoaded(
+            object entity,
+            [CallerMemberName] string navigationName = "",
+            bool loaded = true)
+        {
+            if (_loadedStates == null)
+            {
+                _loadedStates = new Dictionary<string, bool>();
+            }
+
+            _loadedStates[navigationName] = loaded;
+        }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
         protected virtual IDiagnosticsLogger<DbLoggerCategory.Infrastructure> Logger { get; }
 
         /// <summary>
@@ -54,7 +84,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         // ReSharper disable once AssignNullToNotNullAttribute
-        public virtual void Load(object entity, [CallerMemberName] string navigationName = null)
+        public virtual void Load(object entity, [CallerMemberName] string navigationName = "")
         {
             Check.NotNull(entity, nameof(entity));
             Check.NotEmpty(navigationName, nameof(navigationName));
@@ -73,7 +103,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
             object entity,
             CancellationToken cancellationToken = default,
             // ReSharper disable once AssignNullToNotNullAttribute
-            [CallerMemberName] string navigationName = null)
+            [CallerMemberName] string navigationName = "")
         {
             Check.NotNull(entity, nameof(entity));
             Check.NotEmpty(navigationName, nameof(navigationName));
@@ -83,21 +113,15 @@ namespace Microsoft.EntityFrameworkCore.Internal
                 : Task.CompletedTask;
         }
 
-        private bool ShouldLoad(object entity, string navigationName, out NavigationEntry navigationEntry)
+        private bool ShouldLoad(object entity, string navigationName,
+            [NotNullWhenTrue] out NavigationEntry? navigationEntry)
         {
-            EntityEntry GetEntryWithoutDetectChanges()
+            if (_loadedStates != null
+                && _loadedStates.TryGetValue(navigationName, out var loaded)
+                && loaded)
             {
-                var autoDetectChangesEnabled = Context.ChangeTracker.AutoDetectChangesEnabled;
-                try
-                {
-                    Context.ChangeTracker.AutoDetectChangesEnabled = false;
-
-                    return Context.Entry(entity);
-                }
-                finally
-                {
-                    Context.ChangeTracker.AutoDetectChangesEnabled = autoDetectChangesEnabled;
-                }
+                navigationEntry = null;
+                return false;
             }
 
             if (_disposed)
@@ -106,23 +130,18 @@ namespace Microsoft.EntityFrameworkCore.Internal
             }
             else if (Context.ChangeTracker.LazyLoadingEnabled)
             {
-                var entityEntry = GetEntryWithoutDetectChanges();
-                navigationEntry = entityEntry.Navigation(navigationName);
+                var entityEntry = Context.Entry(entity); // Will use local-DetectChanges, if enabled.
+                var tempNavigationEntry = entityEntry.Navigation(navigationName);
 
                 if (entityEntry.State == EntityState.Detached)
                 {
-                    var value = navigationEntry.CurrentValue;
-                    if (value == null
-                        || (navigationEntry.Metadata.IsCollection()
-                            && !((IEnumerable)value).Any()))
-                    {
-                        Logger.DetachedLazyLoadingWarning(Context, entity, navigationName);
-                    }
+                    Logger.DetachedLazyLoadingWarning(Context, entity, navigationName);
                 }
-                else if (!navigationEntry.IsLoaded)
+                else if (!tempNavigationEntry.IsLoaded)
                 {
                     Logger.NavigationLazyLoading(Context, entity, navigationName);
 
+                    navigationEntry = tempNavigationEntry;
                     return true;
                 }
             }

@@ -14,7 +14,7 @@ SET PATH=%DOTNET_ROOT%;%PATH%
 SET sln=%1
 
 IF NOT EXIST "%DOTNET_ROOT%\dotnet.exe" (
-    restore.cmd
+    call restore.cmd
 )
 
 echo ProTip^: You can drag and drop a solution file onto startvs.cmd

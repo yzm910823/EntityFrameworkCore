@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.ExpressionTranslators;
 
@@ -44,23 +45,21 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.ExpressionTranslators.In
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Expression Translate(MethodCallExpression methodCallExpression)
+        public virtual Expression Translate(
+            MethodCallExpression methodCallExpression,
+            IDiagnosticsLogger<DbLoggerCategory.Query> logger)
         {
             return methodCallExpression.Method.Name == nameof(ToString)
-                && methodCallExpression.Arguments.Count == 0
-                && methodCallExpression.Object != null
-                && _typeMapping.TryGetValue(
-                    methodCallExpression.Object.Type
-                        .UnwrapNullableType(),
-                    out var storeType)
+                   && methodCallExpression.Arguments.Count == 0
+                   && methodCallExpression.Object != null
+                   && _typeMapping.TryGetValue(
+                       methodCallExpression.Object.Type
+                           .UnwrapNullableType(),
+                       out var storeType)
                 ? new SqlFunctionExpression(
                     functionName: "CONVERT",
                     returnType: methodCallExpression.Type,
-                    arguments: new[]
-                    {
-                        new SqlFragmentExpression(storeType),
-                        methodCallExpression.Object
-                    })
+                    arguments: new[] { new SqlFragmentExpression(storeType), methodCallExpression.Object })
                 : null;
         }
     }

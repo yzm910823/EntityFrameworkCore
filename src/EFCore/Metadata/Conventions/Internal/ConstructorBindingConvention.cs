@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -23,8 +24,19 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public ConstructorBindingConvention([NotNull] IConstructorBindingFactory bindingFactory)
-            => _bindingFactory = bindingFactory;
+        public ConstructorBindingConvention(
+            [NotNull] IConstructorBindingFactory bindingFactory,
+            [NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> logger)
+        {
+            _bindingFactory = bindingFactory;
+            Logger = logger;
+        }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        protected virtual IDiagnosticsLogger<DbLoggerCategory.Model> Logger { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -84,17 +96,20 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                     {
                         var constructorErrors = bindingFailures.SelectMany(f => f)
                             .GroupBy(f => f.Member as ConstructorInfo)
-                            .Select(x => 
-                                CoreStrings.ConstructorBindingFailed( 
-                                    string.Join("', '", x.Select(f => f.Name)),
-                                    entityType.DisplayName() + "(" + 
-                                        string.Join(", ", x.Key.GetParameters().Select(y => 
-                                            y.ParameterType.ShortDisplayName() + " " + y.Name)
-                                        ) + 
+                            .Select(
+                                x =>
+                                    CoreStrings.ConstructorBindingFailed(
+                                        string.Join("', '", x.Select(f => f.Name)),
+                                        entityType.DisplayName() + "(" +
+                                        string.Join(
+                                            ", ", x.Key.GetParameters().Select(
+                                                y =>
+                                                    y.ParameterType.ShortDisplayName() + " " + y.Name)
+                                        ) +
                                         ")"
-                                )
+                                    )
                             );
-                        
+
                         throw new InvalidOperationException(
                             CoreStrings.ConstructorNotFound(
                                 entityType.DisplayName(),

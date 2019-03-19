@@ -35,14 +35,13 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
             get => EntityType.BaseType != null
                 ? GetAnnotations(EntityType.RootType()).ContainerName
                 : ((string)Annotations.Metadata[CosmosAnnotationNames.ContainerName])
-                    ?? GetDefaultContainerName();
+                  ?? GetDefaultContainerName();
 
-            [param: CanBeNull]
-            set => SetContainerName(value);
+            [param: CanBeNull] set => SetContainerName(value);
         }
 
         private string GetDefaultContainerName() => GetAnnotations(EntityType.Model).DefaultContainerName
-            ?? EntityType.ShortName();
+                                                    ?? EntityType.ShortName();
 
         protected virtual bool SetContainerName([CanBeNull] string value)
             => Annotations.SetAnnotation(
@@ -62,8 +61,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
 
                 return propertyName == null ? null : EntityType.FindProperty(propertyName);
             }
-            [param: CanBeNull]
-            set => SetDiscriminatorProperty(value);
+            [param: CanBeNull] set => SetDiscriminatorProperty(value);
         }
 
         protected virtual bool SetDiscriminatorProperty([CanBeNull] IProperty value)
@@ -75,12 +73,14 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
             {
                 if (EntityType != EntityType.RootType())
                 {
+                    // TODO: Throw an exception
                     //throw new InvalidOperationException(
                     //    RelationalStrings.DiscriminatorPropertyMustBeOnRoot(EntityType.DisplayName()));
                 }
 
                 if (value.DeclaringEntityType != EntityType)
                 {
+                    // TODO: Throw an exception
                     //throw new InvalidOperationException(
                     //    RelationalStrings.DiscriminatorPropertyNotFound(value.Name, EntityType.DisplayName()));
                 }
@@ -106,8 +106,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
         public virtual object DiscriminatorValue
         {
             get => Annotations.Metadata[CosmosAnnotationNames.DiscriminatorValue];
-            [param: CanBeNull]
-            set => SetDiscriminatorValue(value);
+            [param: CanBeNull] set => SetDiscriminatorValue(value);
         }
 
         protected virtual bool SetDiscriminatorValue([CanBeNull] object value)
@@ -115,6 +114,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
             if (value != null
                 && DiscriminatorProperty == null)
             {
+                // TODO: Throw an exception
                 //throw new InvalidOperationException(
                 //    RelationalStrings.NoDiscriminatorForValue(EntityType.DisplayName(), EntityType.RootType().DisplayName()));
             }
@@ -122,6 +122,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
             if (value != null
                 && !DiscriminatorProperty.ClrType.GetTypeInfo().IsAssignableFrom(value.GetType().GetTypeInfo()))
             {
+                // TODO: Throw an exception
                 //throw new InvalidOperationException(
                 //    RelationalStrings.DiscriminatorValueIncompatible(
                 //        value, DiscriminatorProperty.Name, DiscriminatorProperty.ClrType));
@@ -129,5 +130,21 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Metadata
 
             return Annotations.SetAnnotation(CosmosAnnotationNames.DiscriminatorValue, value);
         }
+
+        public string ContainingPropertyName
+        {
+            get => Annotations.Metadata[CosmosAnnotationNames.PropertyName] as string
+                ?? GetDefaultContainingPropertyName();
+
+            [param: CanBeNull] set => SetPropertyName(value);
+        }
+
+        private string GetDefaultContainingPropertyName()
+            => EntityType.FindOwnership()?.PrincipalToDependent.Name;
+
+        protected virtual bool SetPropertyName([CanBeNull] string value)
+            => Annotations.SetAnnotation(
+                CosmosAnnotationNames.PropertyName,
+                Check.NullButNotEmpty(value, nameof(value)));
     }
 }

@@ -16,8 +16,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
     /// </summary>
     public class EntityEntryGraphNode : IInfrastructure<InternalEntityEntry>
     {
-        private readonly InternalEntityEntry _sourceEntry;
         private readonly InternalEntityEntry _entry;
+        private readonly InternalEntityEntry _sourceEntry;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -45,11 +45,6 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         ///     Gets the navigation property that is being traversed to reach this node in the graph.
         /// </summary>
         public virtual INavigation InboundNavigation { get; }
-
-        /// <summary>
-        ///     Gets or sets state that will be available to all nodes that are visited after this node.
-        /// </summary>
-        public virtual object NodeState { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     Gets the entry tracking information about this entity.
@@ -88,10 +83,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
             return new EntityEntryGraphNode(
                 internalEntityEntry,
                 currentNode.Entry.GetInfrastructure(),
-                reachedVia)
-            {
-                NodeState = Check.NotNull(currentNode, nameof(currentNode)).NodeState
-            };
+                reachedVia);
         }
     }
 }

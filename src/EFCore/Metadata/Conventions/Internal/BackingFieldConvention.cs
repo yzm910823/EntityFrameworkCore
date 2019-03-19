@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
@@ -16,6 +18,21 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
     /// </summary>
     public class BackingFieldConvention : IPropertyAddedConvention, INavigationAddedConvention
     {
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public BackingFieldConvention([NotNull] IDiagnosticsLogger<DbLoggerCategory.Model> logger)
+        {
+            Logger = logger;
+        }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        protected virtual IDiagnosticsLogger<DbLoggerCategory.Model> Logger { get; }
+
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
@@ -64,19 +81,20 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
         private static FieldInfo TryMatchFieldName(Model model, Type entityClrType, Type propertyType, string propertyName)
         {
-            Dictionary<string, FieldInfo> fields;
+            IReadOnlyDictionary<string, FieldInfo> fields;
             var entityType = model.FindEntityType(entityClrType);
             if (entityType == null)
             {
-                fields = new Dictionary<string, FieldInfo>(StringComparer.Ordinal);
+                var newFields = new Dictionary<string, FieldInfo>(StringComparer.Ordinal);
                 foreach (var field in entityClrType.GetRuntimeFields())
                 {
                     if (!field.IsStatic
-                        && !fields.ContainsKey(field.Name))
+                        && !newFields.ContainsKey(field.Name))
                     {
-                        fields[field.Name] = field;
+                        newFields[field.Name] = field;
                     }
                 }
+                fields = newFields;
             }
             else
             {
@@ -87,30 +105,38 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
 
             var typeInfo = propertyType.GetTypeInfo();
 
-            var match = TryMatch(sortedFields, "<", propertyName, ">k__BackingField", null)
-                        ?? TryMatch(sortedFields, propertyName, "", "", typeInfo);
+            var match = TryMatch(sortedFields, "<", propertyName, ">k__BackingField", null, null, entityClrType, propertyName);
             if (match == null)
             {
+                match = TryMatch(sortedFields, propertyName, "", "", typeInfo, null, entityClrType, propertyName);
+
                 var camelPrefix = char.ToLowerInvariant(propertyName[0]).ToString();
                 var camelizedSuffix = propertyName.Substring(1);
 
-                match = TryMatch(sortedFields, camelPrefix, camelizedSuffix, "", typeInfo)
-                        ?? TryMatch(sortedFields, "_", camelPrefix, camelizedSuffix, typeInfo)
-                        ?? TryMatch(sortedFields, "_", "", propertyName, typeInfo)
-                        ?? TryMatch(sortedFields, "m_", camelPrefix, camelizedSuffix, typeInfo)
-                        ?? TryMatch(sortedFields, "m_", "", propertyName, typeInfo);
+                match = TryMatch(sortedFields, camelPrefix, camelizedSuffix, "", typeInfo, match, entityClrType, propertyName);
+                match = TryMatch(sortedFields, "_", camelPrefix, camelizedSuffix, typeInfo, match, entityClrType, propertyName);
+                match = TryMatch(sortedFields, "_", "", propertyName, typeInfo, match, entityClrType, propertyName);
+                match = TryMatch(sortedFields, "m_", camelPrefix, camelizedSuffix, typeInfo, match, entityClrType, propertyName);
+                match = TryMatch(sortedFields, "m_", "", propertyName, typeInfo, match, entityClrType, propertyName);
             }
 
             return match;
         }
 
         private static FieldInfo TryMatch(
-            KeyValuePair<string, FieldInfo>[] array, string prefix, string middle, string suffix, TypeInfo typeInfo)
+            KeyValuePair<string, FieldInfo>[] array,
+            string prefix,
+            string middle,
+            string suffix,
+            TypeInfo typeInfo,
+            FieldInfo existingMatch,
+            Type entityClrType,
+            string propertyName)
         {
             var index = PrefixBinarySearch(array, prefix, 0, array.Length - 1);
             if (index == -1)
             {
-                return null;
+                return existingMatch;
             }
 
             var length = prefix.Length + middle.Length + suffix.Length;
@@ -121,22 +147,37 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
                     && currentValue.Key.EndsWith(suffix, StringComparison.Ordinal)
                     && currentValue.Key.IndexOf(middle, prefix.Length, StringComparison.Ordinal) == prefix.Length)
                 {
-                    return typeInfo == null
+                    var newMatch = typeInfo == null
                         ? currentValue.Value
                         : (IsConvertable(typeInfo, currentValue.Value)
                             ? currentValue.Value
                             : null);
+
+                    if (newMatch != null)
+                    {
+                        if (existingMatch != null
+                            && newMatch != existingMatch)
+                        {
+                            throw new InvalidOperationException(
+                                CoreStrings.ConflictingBackingFields(
+                                    propertyName, entityClrType.ShortDisplayName(), existingMatch.Name, newMatch.Name));
+                        }
+
+                        return newMatch;
+                    }
+
+                    return existingMatch;
                 }
 
                 if (++index == array.Length)
                 {
-                    return null;
+                    return existingMatch;
                 }
 
                 currentValue = array[index];
                 if (!currentValue.Key.StartsWith(prefix, StringComparison.Ordinal))
                 {
-                    return null;
+                    return existingMatch;
                 }
             }
         }

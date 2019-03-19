@@ -9,12 +9,21 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class KeyPropagator : IKeyPropagator
     {
@@ -114,7 +123,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         InternalEntityEntry principalEntry = null;
                         if (principal != null)
                         {
-                            principalEntry = stateManager.GetOrCreateEntry(principal);
+                            principalEntry = stateManager.GetOrCreateEntry(principal, foreignKey.PrincipalEntityType);
                         }
                         else if (foreignKey.PrincipalToDependent != null)
                         {

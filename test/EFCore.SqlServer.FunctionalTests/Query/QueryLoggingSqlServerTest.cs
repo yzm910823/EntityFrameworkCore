@@ -4,9 +4,11 @@
 using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.TestModels.Northwind;
+using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -62,7 +64,8 @@ namespace Microsoft.EntityFrameworkCore.Query
                         .ToList();
 
                 Assert.NotNull(customers);
-                Assert.Contains(CoreStrings.LogSensitiveDataLoggingEnabled.GenerateMessage(), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+                Assert.Contains(
+                    CoreStrings.LogSensitiveDataLoggingEnabled(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
             }
         }
 
@@ -78,7 +81,8 @@ namespace Microsoft.EntityFrameworkCore.Query
                         .ToList();
 
                 Assert.NotNull(customers);
-                Assert.Contains(CoreStrings.LogIgnoredInclude.GenerateMessage("[c].Orders"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+                Assert.Contains(
+                    CoreStrings.LogIgnoredInclude(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("[c].Orders"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
             }
         }
 
@@ -114,7 +118,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'Concat({from Order o in value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.TestModels.Northwind.Order]) where ([o].CustomerID == \"ALFKI\") select [o]})'")]
         public virtual void Concat_Include_collection_ignored()
         {
             using (var context = CreateContext())
@@ -126,11 +130,13 @@ namespace Microsoft.EntityFrameworkCore.Query
                     .ToList();
 
                 Assert.NotNull(orders);
-                Assert.Contains(CoreStrings.LogIgnoredInclude.GenerateMessage("[o].OrderDetails"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+                Assert.Contains(
+                    CoreStrings.LogIgnoredInclude(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("[o].OrderDetails"),
+                    Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'Union({from Order o in value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.TestModels.Northwind.Order]) where ([o].CustomerID == \"ALFKI\") select [o]})'")]
         public virtual void Union_Include_collection_ignored()
         {
             using (var context = CreateContext())
@@ -142,11 +148,13 @@ namespace Microsoft.EntityFrameworkCore.Query
                     .ToList();
 
                 Assert.NotNull(orders);
-                Assert.Contains(CoreStrings.LogIgnoredInclude.GenerateMessage("[o].OrderDetails"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+                Assert.Contains(
+                    CoreStrings.LogIgnoredInclude(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage("[o].OrderDetails"),
+                    Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'GroupBy([o].OrderID, [o])'")]
         public virtual void GroupBy_Include_collection_ignored()
         {
             using (var context = CreateContext())
@@ -158,7 +166,10 @@ namespace Microsoft.EntityFrameworkCore.Query
                     .ToList();
 
                 Assert.NotNull(orders);
-                Assert.Contains(CoreStrings.LogIgnoredInclude.GenerateMessage("{from Order o in [g] orderby [o].OrderID asc select [o] => FirstOrDefault()}.OrderDetails"), Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
+                Assert.Contains(
+                    CoreStrings.LogIgnoredInclude(new TestLogger<SqlServerLoggingDefinitions>()).GenerateMessage(
+                        "{from Order o in [g] orderby [o].OrderID asc select [o] => FirstOrDefault()}.OrderDetails"),
+                    Fixture.TestSqlLoggerFactory.Log.Select(l => l.Message));
             }
         }
 

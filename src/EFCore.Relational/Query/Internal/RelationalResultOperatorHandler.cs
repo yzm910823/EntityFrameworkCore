@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore.Query.Expressions.Internal;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using Remotion.Linq.Clauses.Expressions;
@@ -26,8 +27,16 @@ using Remotion.Linq.Clauses.ResultOperators;
 namespace Microsoft.EntityFrameworkCore.Query.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/>. This means that each
+    ///         <see cref="DbContext"/> instance will use its own instance of this service.
+    ///         The implementation may depend on other services registered with any lifetime.
+    ///         The implementation does not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class RelationalResultOperatorHandler : IRelationalResultOperatorHandler
     {
@@ -149,14 +158,14 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                     selectExpression);
 
             return relationalQueryModelVisitor.RequiresClientEval
-                || relationalQueryModelVisitor.RequiresClientSelectMany
-                || relationalQueryModelVisitor.RequiresClientJoin
-                || relationalQueryModelVisitor.RequiresClientFilter
-                || relationalQueryModelVisitor.RequiresClientOrderBy
-                || relationalQueryModelVisitor.RequiresClientResultOperator
-                || relationalQueryModelVisitor.RequiresStreamingGroupResultOperator
-                || !_resultHandlers.TryGetValue(resultOperator.GetType(), out var resultHandler)
-                || selectExpression == null
+                   || relationalQueryModelVisitor.RequiresClientSelectMany
+                   || relationalQueryModelVisitor.RequiresClientJoin
+                   || relationalQueryModelVisitor.RequiresClientFilter
+                   || relationalQueryModelVisitor.RequiresClientOrderBy
+                   || relationalQueryModelVisitor.RequiresClientResultOperator
+                   || relationalQueryModelVisitor.RequiresStreamingGroupResultOperator
+                   || !_resultHandlers.TryGetValue(resultOperator.GetType(), out var resultHandler)
+                   || selectExpression == null
                 ? handlerContext.EvalOnClient()
                 : resultHandler(handlerContext);
         }
@@ -492,16 +501,16 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                         break;
 
                     case MethodCallExpression methodCallExpression
-                    when methodCallExpression.IsEFProperty()
-                        || methodCallExpression.Method.IsEFIndexer():
+                        when methodCallExpression.IsEFProperty()
+                             || methodCallExpression.Method.IsEFIndexer():
                         sql = sqlTranslatingExpressionVisitor.Visit(methodCallExpression);
                         memberInfoMappings[groupByKeyMemberInfo] = sql;
                         key = new[] { sql };
                         break;
 
                     case UnaryExpression unaryExpression
-                    when unaryExpression.RemoveConvert() is MethodCallExpression methodCallExpression
-                        && methodCallExpression.Method.IsEFIndexer():
+                        when unaryExpression.RemoveConvert() is MethodCallExpression methodCallExpression
+                             && methodCallExpression.Method.IsEFIndexer():
                         sql = sqlTranslatingExpressionVisitor.Visit(methodCallExpression);
                         memberInfoMappings[groupByKeyMemberInfo] = sql;
                         key = new[] { sql };
@@ -921,7 +930,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             if (throwOnNullResult
                 && handlerContext.QueryModelVisitor.ParentQueryModelVisitor != null)
             {
-                handlerContext.QueryModelVisitor.QueryCompilationContext.Logger
+                handlerContext.QueryModelVisitor.QueryCompilationContext.Loggers.GetLogger<DbLoggerCategory.Query>()
                     .QueryPossibleExceptionWithAggregateOperator();
             }
 
@@ -1003,12 +1012,10 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                                 clientExpression)
                             : clientExpression;
                     }
-                    else
-                    {
-                        return sumExpression.Type.IsNullableType()
-                            ? Expression.Convert(clientExpression, sumExpression.Type)
-                            : clientExpression;
-                    }
+
+                    return sumExpression.Type.IsNullableType()
+                        ? Expression.Convert(clientExpression, sumExpression.Type)
+                        : clientExpression;
                 }
             }
 
@@ -1066,7 +1073,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
 
         private static bool IsGroupByAggregate(QueryModel queryModel)
             => queryModel.MainFromClause.FromExpression is QuerySourceReferenceExpression mainFromClauseQsre
-                && mainFromClauseQsre.ReferencedQuerySource.ItemType.IsGrouping();
+               && mainFromClauseQsre.ReferencedQuerySource.ItemType.IsGrouping();
 
         private static readonly MethodInfo _transformClientExpressionMethodInfo
             = typeof(RelationalResultOperatorHandler).GetTypeInfo()
@@ -1082,6 +1089,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
         private sealed class ContainsSelectExpressionVisitor : ExpressionVisitor
         {
             public bool ContainsExpressionType { get; private set; }
+
             public override Expression Visit(Expression node)
             {
                 if (node is SelectExpression)
@@ -1089,9 +1097,11 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                     ContainsExpressionType = true;
                     return node;
                 }
+
                 return base.Visit(node);
             }
         }
+
         private static bool ContainsSelect(Expression expression)
         {
             var visitor = new ContainsSelectExpressionVisitor();

@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.EntityFrameworkCore.TestUtilities;
@@ -13,7 +14,8 @@ using Xunit;
 namespace Microsoft.EntityFrameworkCore
 {
     [SqlServerCondition(SqlServerCondition.IsNotSqlAzure)]
-    public class ConvertToProviderTypesSqlServerTest : ConvertToProviderTypesTestBase<ConvertToProviderTypesSqlServerTest.ConvertToProviderTypesSqlServerFixture>
+    public class ConvertToProviderTypesSqlServerTest : ConvertToProviderTypesTestBase<
+        ConvertToProviderTypesSqlServerTest.ConvertToProviderTypesSqlServerFixture>
     {
         public ConvertToProviderTypesSqlServerTest(ConvertToProviderTypesSqlServerFixture fixture)
             : base(fixture)
@@ -26,7 +28,7 @@ namespace Microsoft.EntityFrameworkCore
             using (var context = CreateContext())
             {
                 Assert.Contains(
-                    RelationalStrings.LogValueConversionSqlLiteralWarning
+                    RelationalStrings.LogValueConversionSqlLiteralWarning(new TestLogger<SqlServerLoggingDefinitions>())
                         .GenerateMessage(
                             typeof(decimal).ShortDisplayName(),
                             new NumberToBytesConverter<decimal>().GetType().ShortDisplayName()),
@@ -193,8 +195,7 @@ UnicodeDataTypes.StringUnicode ---> [nullable nvarchar] [MaxLength = -1]
                 => base
                     .AddOptions(builder)
                     .ConfigureWarnings(
-                        c => c.Log(RelationalEventId.QueryClientEvaluationWarning)
-                            .Log(SqlServerEventId.DecimalTypeDefaultWarning));
+                        c => c.Log(SqlServerEventId.DecimalTypeDefaultWarning));
 
             protected override void OnModelCreating(ModelBuilder modelBuilder, DbContext context)
             {

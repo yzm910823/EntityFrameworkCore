@@ -1,4 +1,8 @@
-﻿using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.TestUtilities;
@@ -6,43 +10,46 @@ using Xunit;
 
 namespace Microsoft.EntityFrameworkCore.ModelBuilding
 {
-    public class ShadowEntityTypeTest : ModelBuilderTest
+    public class ShadowEntityTypeTest
     {
         [Fact]
         public virtual void Can_create_two_shadow_weak_owned_types()
         {
             var modelBuilder = CreateModelBuilder();
 
-            modelBuilder.Entity("Customer", b =>
-            {
-                b.Property<string>("CustomerId");
-
-                b.HasKey("CustomerId");
-
-                b.OwnsOne("CustomerDetails", "Details", b1 =>
+            modelBuilder.Entity(
+                "Customer", b =>
                 {
-                    b1.Property<string>("CustomerId");
+                    b.Property<string>("CustomerId");
 
-                    b1.HasKey("CustomerId");
+                    b.HasKey("CustomerId");
 
-                    b1.HasOne("Customer")
-                        .WithOne("Details")
-                        .HasForeignKey("CustomerDetails", "CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                    b.OwnsOne(
+                        "CustomerDetails", "Details", b1 =>
+                        {
+                            b1.Property<string>("CustomerId");
+
+                            b1.HasKey("CustomerId");
+
+                            b1.HasOne("Customer")
+                                .WithOne("Details")
+                                .HasForeignKey("CustomerDetails", "CustomerId")
+                                .OnDelete(DeleteBehavior.Cascade);
+                        });
+
+                    b.OwnsOne(
+                        "CustomerDetails", "AdditionalDetails", b1 =>
+                        {
+                            b1.Property<string>("CustomerId");
+
+                            b1.HasKey("CustomerId");
+
+                            b1.HasOne("Customer")
+                                .WithOne("AdditionalDetails")
+                                .HasForeignKey("CustomerDetails", "CustomerId")
+                                .OnDelete(DeleteBehavior.Cascade);
+                        });
                 });
-
-                b.OwnsOne("CustomerDetails", "AdditionalDetails", b1 =>
-                {
-                    b1.Property<string>("CustomerId");
-
-                    b1.HasKey("CustomerId");
-
-                    b1.HasOne("Customer")
-                        .WithOne("AdditionalDetails")
-                        .HasForeignKey("CustomerDetails", "CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade);
-                });
-            });
 
             var model = modelBuilder.Model;
             var ownership1 = model.FindEntityType("Customer").FindNavigation("Details").ForeignKey;
@@ -51,7 +58,8 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             Assert.True(ownership2.IsRequired);
             Assert.NotEqual(ownership1.DeclaringEntityType, ownership2.DeclaringEntityType);
             Assert.Equal(ownership1.Properties.Single().Name, ownership2.Properties.Single().Name);
-            Assert.Equal(ownership1.DeclaringEntityType.FindPrimaryKey().Properties.Single().Name,
+            Assert.Equal(
+                ownership1.DeclaringEntityType.FindPrimaryKey().Properties.Single().Name,
                 ownership2.DeclaringEntityType.FindPrimaryKey().Properties.Single().Name);
             Assert.Equal(2, model.GetEntityTypes().Count(e => e.Name == "CustomerDetails"));
         }
@@ -117,5 +125,23 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
         protected virtual ModelBuilder CreateModelBuilder()
             => InMemoryTestHelpers.Instance.CreateConventionBuilder();
+
+        protected class Order
+        {
+            public int OrderId { get; set; }
+
+            public int? CustomerId { get; set; }
+            public Guid AnotherCustomerId { get; set; }
+            public Customer Customer { get; set; }
+        }
+
+        protected class Customer
+        {
+            public int Id { get; set; }
+            public Guid AlternateKey { get; set; }
+            public string Name { get; set; }
+
+            public IEnumerable<Order> Orders { get; set; }
+        }
     }
 }

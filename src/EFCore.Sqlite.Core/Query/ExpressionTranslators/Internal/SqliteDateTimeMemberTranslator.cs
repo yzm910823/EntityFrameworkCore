@@ -7,12 +7,20 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
 using Microsoft.EntityFrameworkCore.Query.ExpressionTranslators;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Internal
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class SqliteDateTimeMemberTranslator : IMemberTranslator
     {
@@ -47,14 +55,10 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
                     Expression.Convert(
                         Expression.Multiply(
                             new ExplicitCastExpression(
-                                new SqlFunctionExpression(
-                                    "strftime",
+                                SqliteExpression.Strftime(
                                     typeof(string),
-                                    new[]
-                                    {
-                                        Expression.Constant("%f"),
-                                        memberExpression.Expression
-                                    }),
+                                    "%f",
+                                    memberExpression.Expression),
                                 typeof(double)),
                             Expression.Convert(
                                 Expression.Constant(1000),
@@ -82,55 +86,55 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
             if (_datePartMapping.TryGetValue(memberName, out var datePart))
             {
                 return new ExplicitCastExpression(
-                    new SqlFunctionExpression(
-                        "strftime",
+                    SqliteExpression.Strftime(
                         typeof(string),
-                        new[]
-                        {
-                            Expression.Constant(datePart),
-                            memberExpression.Expression
-                        }),
+                        datePart,
+                        memberExpression.Expression),
                     memberExpression.Type);
             }
 
-            var sqlArguments = new List<Expression>();
+            string format = null;
+            Expression timestring = null;
+            var modifiers = new List<Expression>();
+
             var datetimeFormat = "%Y-%m-%d %H:%M:%f";
             switch (memberName)
             {
                 case nameof(DateTime.Now):
-                    sqlArguments.Add(Expression.Constant(datetimeFormat));
-                    sqlArguments.Add(Expression.Constant("now"));
-                    sqlArguments.Add(Expression.Constant("localtime"));
+                    format = datetimeFormat;
+                    timestring = Expression.Constant("now");
+                    modifiers.Add(Expression.Constant("localtime"));
                     break;
 
                 case nameof(DateTime.UtcNow):
-                    sqlArguments.Add(Expression.Constant(datetimeFormat));
-                    sqlArguments.Add(Expression.Constant("now"));
+                    format = datetimeFormat;
+                    timestring = Expression.Constant("now");
                     break;
 
                 case nameof(DateTime.Date):
-                    sqlArguments.Add(Expression.Constant(datetimeFormat));
-                    sqlArguments.Add(memberExpression.Expression);
-                    sqlArguments.Add(Expression.Constant("start of day"));
+                    format = datetimeFormat;
+                    timestring = memberExpression.Expression;
+                    modifiers.Add(Expression.Constant("start of day"));
                     break;
 
                 case nameof(DateTime.Today):
-                    sqlArguments.Add(Expression.Constant(datetimeFormat));
-                    sqlArguments.Add(Expression.Constant("now"));
-                    sqlArguments.Add(Expression.Constant("localtime"));
-                    sqlArguments.Add(Expression.Constant("start of day"));
+                    format = datetimeFormat;
+                    timestring = Expression.Constant("now");
+                    modifiers.Add(Expression.Constant("localtime"));
+                    modifiers.Add(Expression.Constant("start of day"));
                     break;
 
                 case nameof(DateTime.TimeOfDay):
-                    sqlArguments.Add(Expression.Constant("%H:%M:%f"));
-                    sqlArguments.Add(memberExpression.Expression);
+                    format = "%H:%M:%f";
+                    timestring = memberExpression.Expression;
                     break;
 
                 default:
                     return null;
             }
 
-            Debug.Assert(sqlArguments.Count != 0);
+            Debug.Assert(format != null);
+            Debug.Assert(timestring != null);
 
             return new SqlFunctionExpression(
                 "rtrim",
@@ -142,10 +146,11 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.ExpressionTranslators.Inter
                         memberExpression.Type,
                         new Expression[]
                         {
-                            new SqlFunctionExpression(
-                                "strftime",
+                            SqliteExpression.Strftime(
                                 memberExpression.Type,
-                                sqlArguments),
+                                format,
+                                timestring,
+                                modifiers),
                             Expression.Constant("0")
                         }),
                     Expression.Constant(".")

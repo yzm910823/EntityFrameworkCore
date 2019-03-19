@@ -85,6 +85,20 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         }
 
         /// <summary>
+        ///     Scans this entity instance to detect any changes made to the instance data. <see cref="DetectChanges()" />
+        ///     is usually called automatically by the context to get up-to-date information on an individual entity before
+        ///     returning change tracking information. You typically only need to call this method if you have
+        ///     disabled <see cref="ChangeTracker.AutoDetectChangesEnabled" />.
+        /// </summary>
+        public virtual void DetectChanges()
+        {
+            if (Context.Model[ChangeDetector.SkipDetectChangesAnnotation] == null)
+            {
+                Context.GetDependencies().ChangeDetector.DetectChanges(InternalEntry);
+            }
+        }
+
+        /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
@@ -257,7 +271,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         ///         true since any value is considered a valid key value.
         ///     </para>
         /// </summary>
-        public virtual bool IsKeySet => InternalEntry.IsKeySet;
+        public virtual bool IsKeySet => InternalEntry.IsKeySet.IsSet;
 
         /// <summary>
         ///     Gets the current property values for this entity.

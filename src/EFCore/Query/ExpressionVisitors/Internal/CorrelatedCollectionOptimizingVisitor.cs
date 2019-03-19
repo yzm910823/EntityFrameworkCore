@@ -190,9 +190,9 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
             // - customer specified orderings on child
 
             var parentOrderings = new List<Ordering>();
-            foreach (var exisingParentOrderByClause in _parentQueryModel.BodyClauses.OfType<OrderByClause>())
+            foreach (var existingParentOrderByClause in _parentQueryModel.BodyClauses.OfType<OrderByClause>())
             {
-                parentOrderings.AddRange(exisingParentOrderByClause.Orderings);
+                parentOrderings.AddRange(existingParentOrderByClause.Orderings);
             }
 
             var originEntityType = _queryCompilationContext.Model.FindEntityType(originQuerySource.Type);
@@ -240,14 +240,20 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
 
             var subQueryProjection = new List<Expression>();
             var orderingsToProjectionMapping = new List<int>();
-            foreach (var exisitingClonedOrderByClause in clonedParentQueryModel.BodyClauses.OfType<OrderByClause>())
+            foreach (var existingClonedOrderByClause in clonedParentQueryModel.BodyClauses.OfType<OrderByClause>())
             {
-                foreach (var existingClonedOrdering in exisitingClonedOrderByClause.Orderings)
+                foreach (var existingClonedOrdering in existingClonedOrderByClause.Orderings)
                 {
                     var matchingIndex = subQueryProjection
-                        .Select((o, i) => new { o, i })
-                        .Where(e => ExpressionEqualityComparer.Instance.Equals(e.o, existingClonedOrdering.Expression)
-                             || AreEquivalentPropertyExpressions(e.o, existingClonedOrdering.Expression)).Select(e => (int?)e.i).FirstOrDefault();
+                        .Select(
+                            (o, i) => new
+                            {
+                                o,
+                                i
+                            })
+                        .Where(
+                            e => ExpressionEqualityComparer.Instance.Equals(e.o, existingClonedOrdering.Expression)
+                                 || AreEquivalentPropertyExpressions(e.o, existingClonedOrdering.Expression)).Select(e => (int?)e.i).FirstOrDefault();
 
                     if (matchingIndex == null)
                     {
@@ -578,12 +584,12 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
                 propertyName2 = memberExpression2.Member.Name;
             }
 
-            return qsre1!= null
-                && qsre2 != null
-                && propertyName1 != null
-                && propertyName2 != null
-                && qsre1.ReferencedQuerySource == qsre2.ReferencedQuerySource
-                && propertyName1 == propertyName2;
+            return qsre1 != null
+                   && qsre2 != null
+                   && propertyName1 != null
+                   && propertyName2 != null
+                   && qsre1.ReferencedQuerySource == qsre2.ReferencedQuerySource
+                   && propertyName1 == propertyName2;
         }
 
         private static bool ProcessResultOperators(QueryModel queryModel)
@@ -704,7 +710,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
                 queryModel.BodyClauses.Add(orderByClause = new OrderByClause());
             }
 
-            // all exisiting order by clauses are guaranteed to be present in the parent ordering list,
+            // all existing order by clauses are guaranteed to be present in the parent ordering list,
             // so we can safely remove them from the original order by clause
             orderByClause.Orderings.Clear();
 

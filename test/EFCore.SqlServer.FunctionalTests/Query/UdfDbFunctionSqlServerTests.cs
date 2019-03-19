@@ -1,12 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.TestUtilities;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -36,9 +31,9 @@ namespace Microsoft.EntityFrameworkCore.Query
                 @"SELECT COUNT(*)
 FROM [Customers] AS [c]
 WHERE CASE
-    WHEN IsDate([c].[FirstName]) = 1
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
-END = 0");
+    WHEN IsDate([c].[FirstName]) = CAST(1 AS bit)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END = CAST(0 AS bit)");
         }
 
         [Fact]
@@ -129,7 +124,7 @@ WHERE [c].[Id] = @__customerId_0");
             AssertSql(
                 @"SELECT LOWER(CONVERT(VARCHAR(11), [c].[Id]))
 FROM [Customers] AS [c]
-WHERE [dbo].[IsTopCustomer]([c].[Id]) = 1");
+WHERE [dbo].[IsTopCustomer]([c].[Id]) = CAST(1 AS bit)");
         }
 
         [Fact]
@@ -218,7 +213,7 @@ FROM [Customers] AS [c]
 WHERE [c].[Id] = @__customerId_1");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == AddOneStatic([c].Id))'")]
         public override void Scalar_Nested_Function_Unwind_Client_Eval_Where_Static()
         {
             base.Scalar_Nested_Function_Unwind_Client_Eval_Where_Static();
@@ -228,7 +223,7 @@ WHERE [c].[Id] = @__customerId_1");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'orderby AddOneStatic([c].Id) asc'")]
         public override void Scalar_Nested_Function_Unwind_Client_Eval_OrderBy_Static()
         {
             base.Scalar_Nested_Function_Unwind_Client_Eval_OrderBy_Static();
@@ -249,7 +244,7 @@ FROM [Customers] AS [c]
 ORDER BY [c].[Id]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == AddOneStatic(Abs(CustomerOrderCountWithClientStatic([c].Id))))'")]
         public override void Scalar_Nested_Function_Client_BCL_UDF_Static()
         {
             base.Scalar_Nested_Function_Client_BCL_UDF_Static();
@@ -259,7 +254,7 @@ ORDER BY [c].[Id]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == AddOneStatic(CustomerOrderCountWithClientStatic(Abs([c].Id))))'")]
         public override void Scalar_Nested_Function_Client_UDF_BCL_Static()
         {
             base.Scalar_Nested_Function_Client_UDF_BCL_Static();
@@ -269,7 +264,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == Abs(AddOneStatic(CustomerOrderCountWithClientStatic([c].Id))))'")]
         public override void Scalar_Nested_Function_BCL_Client_UDF_Static()
         {
             base.Scalar_Nested_Function_BCL_Client_UDF_Static();
@@ -279,7 +274,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (1 == Abs(CustomerOrderCountWithClientStatic(AddOneStatic([c].Id))))'")]
         public override void Scalar_Nested_Function_BCL_UDF_Client_Static()
         {
             base.Scalar_Nested_Function_BCL_UDF_Client_Static();
@@ -289,7 +284,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (1 == CustomerOrderCountWithClientStatic(Abs(AddOneStatic([c].Id))))'")]
         public override void Scalar_Nested_Function_UDF_BCL_Client_Static()
         {
             base.Scalar_Nested_Function_UDF_BCL_Client_Static();
@@ -299,7 +294,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (1 == CustomerOrderCountWithClientStatic(AddOneStatic(Abs([c].Id))))'")]
         public override void Scalar_Nested_Function_UDF_Client_BCL_Static()
         {
             base.Scalar_Nested_Function_UDF_Client_BCL_Static();
@@ -309,7 +304,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (3 == AddOneStatic(Abs([c].Id)))'")]
         public override void Scalar_Nested_Function_Client_BCL_Static()
         {
             base.Scalar_Nested_Function_Client_BCL_Static();
@@ -319,7 +314,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == AddOneStatic(CustomerOrderCountWithClientStatic([c].Id)))'")]
         public override void Scalar_Nested_Function_Client_UDF_Static()
         {
             base.Scalar_Nested_Function_Client_UDF_Static();
@@ -329,7 +324,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (3 == Abs(AddOneStatic([c].Id)))'")]
         public override void Scalar_Nested_Function_BCL_Client_Static()
         {
             base.Scalar_Nested_Function_BCL_Client_Static();
@@ -350,7 +345,7 @@ FROM [Customers] AS [c]
 WHERE 3 = ABS([dbo].[CustomerOrderCount]([c].[Id]))");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == CustomerOrderCountWithClientStatic(AddOneStatic([c].Id)))'")]
         public override void Scalar_Nested_Function_UDF_Client_Static()
         {
             base.Scalar_Nested_Function_UDF_Client_Static();
@@ -407,9 +402,9 @@ WHERE [c].[Id] = 1");
                 @"SELECT COUNT(*)
 FROM [Customers] AS [c]
 WHERE CASE
-    WHEN IsDate([c].[FirstName]) = 1
-    THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT)
-END = 0");
+    WHEN IsDate([c].[FirstName]) = CAST(1 AS bit)
+    THEN CAST(1 AS bit) ELSE CAST(0 AS bit)
+END = CAST(0 AS bit)");
         }
 
         [Fact]
@@ -494,7 +489,7 @@ WHERE [c].[Id] = @__customerId_0");
             AssertSql(
                 @"SELECT LOWER(CONVERT(VARCHAR(11), [c].[Id]))
 FROM [Customers] AS [c]
-WHERE [dbo].[IsTopCustomer]([c].[Id]) = 1");
+WHERE [dbo].[IsTopCustomer]([c].[Id]) = CAST(1 AS bit)");
         }
 
         [Fact]
@@ -583,7 +578,7 @@ FROM [Customers] AS [c]
 WHERE [c].[Id] = @__customerId_2");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == __context_0.AddOneInstance([c].Id))'")]
         public override void Scalar_Nested_Function_Unwind_Client_Eval_Where_Instance()
         {
             base.Scalar_Nested_Function_Unwind_Client_Eval_Where_Instance();
@@ -593,7 +588,7 @@ WHERE [c].[Id] = @__customerId_2");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'orderby __context_0.AddOneInstance([c].Id) asc'")]
         public override void Scalar_Nested_Function_Unwind_Client_Eval_OrderBy_Instance()
         {
             base.Scalar_Nested_Function_Unwind_Client_Eval_OrderBy_Instance();
@@ -614,7 +609,7 @@ FROM [Customers] AS [c]
 ORDER BY [c].[Id]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == __context_0.AddOneInstance(Abs(__context_0.CustomerOrderCountWithClientInstance([c].Id))))'")]
         public override void Scalar_Nested_Function_Client_BCL_UDF_Instance()
         {
             base.Scalar_Nested_Function_Client_BCL_UDF_Instance();
@@ -624,7 +619,7 @@ ORDER BY [c].[Id]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == __context_0.AddOneInstance(__context_0.CustomerOrderCountWithClientInstance(Abs([c].Id))))'")]
         public override void Scalar_Nested_Function_Client_UDF_BCL_Instance()
         {
             base.Scalar_Nested_Function_Client_UDF_BCL_Instance();
@@ -634,7 +629,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == Abs(__context_0.AddOneInstance(__context_0.CustomerOrderCountWithClientInstance([c].Id))))'")]
         public override void Scalar_Nested_Function_BCL_Client_UDF_Instance()
         {
             base.Scalar_Nested_Function_BCL_Client_UDF_Instance();
@@ -644,7 +639,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (1 == Abs(__context_0.CustomerOrderCountWithClientInstance(__context_0.AddOneInstance([c].Id))))'")]
         public override void Scalar_Nested_Function_BCL_UDF_Client_Instance()
         {
             base.Scalar_Nested_Function_BCL_UDF_Client_Instance();
@@ -654,7 +649,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (1 == __context_0.CustomerOrderCountWithClientInstance(Abs(__context_0.AddOneInstance([c].Id))))'")]
         public override void Scalar_Nested_Function_UDF_BCL_Client_Instance()
         {
             base.Scalar_Nested_Function_UDF_BCL_Client_Instance();
@@ -664,7 +659,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (1 == __context_0.CustomerOrderCountWithClientInstance(__context_0.AddOneInstance(Abs([c].Id))))'")]
         public override void Scalar_Nested_Function_UDF_Client_BCL_Instance()
         {
             base.Scalar_Nested_Function_UDF_Client_BCL_Instance();
@@ -674,7 +669,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (3 == __context_0.AddOneInstance(Abs([c].Id)))'")]
         public override void Scalar_Nested_Function_Client_BCL_Instance()
         {
             base.Scalar_Nested_Function_Client_BCL_Instance();
@@ -684,7 +679,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == __context_0.AddOneInstance(__context_0.CustomerOrderCountWithClientInstance([c].Id)))'")]
         public override void Scalar_Nested_Function_Client_UDF_Instance()
         {
             base.Scalar_Nested_Function_Client_UDF_Instance();
@@ -694,7 +689,7 @@ FROM [Customers] AS [c]");
 FROM [Customers] AS [c]");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (3 == Abs(__context_0.AddOneInstance([c].Id)))'")]
         public override void Scalar_Nested_Function_BCL_Client_Instance()
         {
             base.Scalar_Nested_Function_BCL_Client_Instance();
@@ -715,7 +710,7 @@ FROM [Customers] AS [c]
 WHERE 3 = ABS([dbo].[CustomerOrderCount]([c].[Id]))");
         }
 
-        [Fact]
+        [Fact(Skip = "Issue #14935. Cannot eval 'where (2 == __context_0.CustomerOrderCountWithClientInstance(__context_0.AddOneInstance([c].Id)))'")]
         public override void Scalar_Nested_Function_UDF_Client_Instance()
         {
             base.Scalar_Nested_Function_UDF_Client_Instance();
@@ -749,7 +744,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
             {
                 base.Seed(context);
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function [dbo].[CustomerOrderCount] (@customerId int)
                                                     returns int
                                                     as
@@ -757,7 +752,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
                                                         return (select count(id) from orders where customerId = @customerId);
                                                     end");
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function[dbo].[StarValue] (@starCount int, @value nvarchar(max))
                                                     returns nvarchar(max)
                                                         as
@@ -765,7 +760,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
                                                     return replicate('*', @starCount) + @value
                                                     end");
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function[dbo].[DollarValue] (@starCount int, @value nvarchar(max))
                                                     returns nvarchar(max)
                                                         as
@@ -773,7 +768,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
                                                     return replicate('$', @starCount) + @value
                                                     end");
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function [dbo].[GetReportingPeriodStartDate] (@period int)
                                                     returns DateTime
                                                     as
@@ -781,7 +776,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
                                                         return '1998-01-01'
                                                     end");
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function [dbo].[GetCustomerWithMostOrdersAfterDate] (@searchDate Date)
                                                     returns int
                                                     as
@@ -793,7 +788,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
                                                                 order by count(id) desc)
                                                     end");
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function [dbo].[IsTopCustomer] (@customerId int)
                                                     returns bit
                                                     as
@@ -804,7 +799,7 @@ WHERE 3 = [dbo].[CustomerOrderCount](ABS([c].[Id]))");
                                                         return 0
                                                     end");
 
-                context.Database.ExecuteSqlCommand(
+                context.Database.ExecuteRawSql(
                     @"create function [dbo].[IdentityString] (@customerName nvarchar(max))
                                                     returns nvarchar(max)
                                                     as

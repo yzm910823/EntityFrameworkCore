@@ -11,8 +11,17 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 {
     /// <summary>
-    ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-    ///     directly from your code. This API may change or be removed in future releases.
+    ///     <para>
+    ///         This API supports the Entity Framework Core infrastructure and is not intended to be used
+    ///         directly from your code. This API may change or be removed in future releases.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Scoped"/> and multiple registrations
+    ///         are allowed. This means that each <see cref="DbContext"/> instance will use its own
+    ///         set of instances of this service.
+    ///         The implementations may depend on other services registered with any lifetime.
+    ///         The implementations do not need to be thread-safe.
+    ///     </para>
     /// </summary>
     public class SqlServerConventionSetBuilder : RelationalConventionSetBuilder
     {
@@ -40,14 +49,16 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 
             base.AddConventions(conventionSet);
 
-            var valueGenerationStrategyConvention = new SqlServerValueGenerationStrategyConvention();
+            var logger = Dependencies.Logger;
+
+            var valueGenerationStrategyConvention = new SqlServerValueGenerationStrategyConvention(logger);
             conventionSet.ModelInitializedConventions.Add(valueGenerationStrategyConvention);
             conventionSet.ModelInitializedConventions.Add(new RelationalMaxIdentifierLengthConvention(128));
 
-            ValueGeneratorConvention valueGeneratorConvention = new SqlServerValueGeneratorConvention();
+            ValueGeneratorConvention valueGeneratorConvention = new SqlServerValueGeneratorConvention(logger);
             ReplaceConvention(conventionSet.BaseEntityTypeChangedConventions, valueGeneratorConvention);
 
-            var sqlServerInMemoryTablesConvention = new SqlServerMemoryOptimizedTablesConvention();
+            var sqlServerInMemoryTablesConvention = new SqlServerMemoryOptimizedTablesConvention(logger);
             conventionSet.EntityTypeAnnotationChangedConventions.Add(sqlServerInMemoryTablesConvention);
 
             ReplaceConvention(conventionSet.PrimaryKeyChangedConventions, valueGeneratorConvention);
@@ -58,7 +69,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 
             ReplaceConvention(conventionSet.ForeignKeyRemovedConventions, valueGeneratorConvention);
 
-            var sqlServerIndexConvention = new SqlServerIndexConvention(_sqlGenerationHelper);
+            var sqlServerIndexConvention = new SqlServerIndexConvention(_sqlGenerationHelper,logger);
 
             conventionSet.BaseEntityTypeChangedConventions.Add(sqlServerIndexConvention);
 
@@ -76,7 +87,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             conventionSet.PropertyAnnotationChangedConventions.Add(sqlServerIndexConvention);
             conventionSet.PropertyAnnotationChangedConventions.Add((SqlServerValueGeneratorConvention)valueGeneratorConvention);
 
-            ReplaceConvention(conventionSet.ModelAnnotationChangedConventions, (RelationalDbFunctionConvention)new SqlServerDbFunctionConvention());
+            ReplaceConvention(conventionSet.ModelAnnotationChangedConventions, (RelationalDbFunctionConvention)new SqlServerDbFunctionConvention(logger));
 
             return conventionSet;
         }
@@ -89,7 +100,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         {
             var serviceProvider = new ServiceCollection()
                 .AddEntityFrameworkSqlServer()
-                .AddDbContext<DbContext>(o => o.UseSqlServer("Server=."))
+                .AddDbContext<DbContext>((p, o) =>
+                    o.UseSqlServer("Server=.")
+                        .UseInternalServiceProvider(p))
                 .BuildServiceProvider();
 
             using (var serviceScope = serviceProvider.GetRequiredService<IServiceScopeFactory>().CreateScope())

@@ -7,18 +7,27 @@ using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
+using Microsoft.Extensions.DependencyInjection;
 using Remotion.Linq.Parsing.Structure;
 using Remotion.Linq.Parsing.Structure.NodeTypeProviders;
 
 namespace Microsoft.EntityFrameworkCore.Query.Internal
 {
     /// <summary>
-    ///     Creates <see cref="INodeTypeProvider" /> instances for use by the query compiler
-    ///     based on a <see cref="MethodInfoBasedNodeTypeRegistry" />.
+    ///     <para>
+    ///         Creates <see cref="INodeTypeProvider" /> instances for use by the query compiler
+    ///         based on a <see cref="MethodInfoBasedNodeTypeRegistry" />.
+    ///     </para>
+    ///     <para>
+    ///         The service lifetime is <see cref="ServiceLifetime.Singleton"/>. This means a single instance
+    ///         is used by many <see cref="DbContext"/> instances. The implementation must be thread-safe.
+    ///         This service cannot depend on services registered as <see cref="ServiceLifetime.Scoped"/>.
+    ///     </para>
     /// </summary>
     public class MethodInfoBasedNodeTypeRegistryFactory : INodeTypeProviderFactory
     {
         private static readonly object _syncLock = new object();
+
         private static readonly MethodNameBasedNodeTypeRegistry _methodNameBasedNodeTypeRegistry
             = MethodNameBasedNodeTypeRegistry.CreateFromRelinqAssembly();
 
@@ -50,11 +59,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             _methodInfoBasedNodeTypeRegistry
                 .Register(ThenIncludeExpressionNode.SupportedMethods, typeof(ThenIncludeExpressionNode));
 
-            _nodeTypeProviders = new INodeTypeProvider[]
-            {
-                    _methodInfoBasedNodeTypeRegistry,
-                    _methodNameBasedNodeTypeRegistry
-            };
+            _nodeTypeProviders = new INodeTypeProvider[] { _methodInfoBasedNodeTypeRegistry, _methodNameBasedNodeTypeRegistry };
         }
 
         /// <summary>
@@ -70,11 +75,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             lock (_syncLock)
             {
                 _methodInfoBasedNodeTypeRegistry.Register(methods, nodeType);
-                _nodeTypeProviders = new INodeTypeProvider[]
-                {
-                        _methodInfoBasedNodeTypeRegistry,
-                        _methodNameBasedNodeTypeRegistry
-                };
+                _nodeTypeProviders = new INodeTypeProvider[] { _methodInfoBasedNodeTypeRegistry, _methodNameBasedNodeTypeRegistry };
             }
         }
 

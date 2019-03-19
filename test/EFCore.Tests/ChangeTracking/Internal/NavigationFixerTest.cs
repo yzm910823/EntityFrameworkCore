@@ -52,7 +52,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             public DbSet<Post> Posts { get; set; }
 
             protected internal override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                => optionsBuilder.UseInMemoryDatabase(typeof(FixupContext).FullName);
+                => optionsBuilder
+                    .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
+                    .UseInMemoryDatabase(typeof(FixupContext).FullName);
         }
 
         private class Blog
@@ -1445,11 +1447,11 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
             principalEntry1.SetEntityState(EntityState.Deleted);
 
-            Assert.Same(principal1, dependent1.AlternateProduct);
+            Assert.Null(dependent1.AlternateProduct);
             Assert.Same(dependent1, principal1.OriginalProduct);
             Assert.Same(principal2, dependent2.AlternateProduct);
             Assert.Same(dependent2, principal2.OriginalProduct);
-            Assert.Equal(dependent1.AlternateProductId, principal1.Id);
+            Assert.Null(dependent1.AlternateProductId);
             Assert.Equal(dependent2.AlternateProductId, principal2.Id);
 
             principalEntry1.SetEntityState(EntityState.Detached);
@@ -1458,7 +1460,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             Assert.Same(dependent1, principal1.OriginalProduct);
             Assert.Same(principal2, dependent2.AlternateProduct);
             Assert.Same(dependent2, principal2.OriginalProduct);
-            Assert.Equal(dependent1.AlternateProductId, principal1.Id);
+            Assert.Null(dependent1.AlternateProductId);
             Assert.Equal(dependent2.AlternateProductId, principal2.Id);
         }
 
