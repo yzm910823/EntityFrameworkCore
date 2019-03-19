@@ -131,14 +131,10 @@ namespace Microsoft.Data.Sqlite
                 case SQLITE_TEXT:
                     return "TEXT";
 
-                case SQLITE_BLOB:
-                    return "BLOB";
-
-                case SQLITE_NULL:
-                    return "BLOB"; // since no type is specified the column has affinity BLOB
-
                 default:
-                    Debug.Assert(false, "Unexpected column type: " + sqliteType);
+                    Debug.Assert(
+                        sqliteType == SQLITE_BLOB || sqliteType == SQLITE_NULL,
+                        "Unexpected column type: " + sqliteType);
                     return "BLOB";
             }
         }
@@ -167,15 +163,11 @@ namespace Microsoft.Data.Sqlite
                 case SQLITE_TEXT:
                     return typeof(string);
 
-                case SQLITE_BLOB:
-                    return typeof(byte[]);
-
-                case SQLITE_NULL:
-                    return typeof(int);
-
                 default:
-                    Debug.Assert(false, "Unexpected column type: " + sqliteType);
-                    return typeof(int);
+                    Debug.Assert(
+                        sqliteType == SQLITE_BLOB || sqliteType == SQLITE_NULL,
+                        "Unexpected column type: " + sqliteType);
+                    return typeof(byte[]);
             }
         }
 
@@ -192,15 +184,9 @@ namespace Microsoft.Data.Sqlite
                 case "text":
                     return typeof(string);
 
-                case "blob":
-                    return typeof(byte[]);
-
-                case null:
-                    return typeof(int);
-
                 default:
-                    Debug.Assert(false, "Unexpected column type: " + type);
-                    return typeof(int);
+                    Debug.Assert(type == "blob" || type == null, "Unexpected column type: " + type);
+                    return typeof(byte[]);
             }
         }
 

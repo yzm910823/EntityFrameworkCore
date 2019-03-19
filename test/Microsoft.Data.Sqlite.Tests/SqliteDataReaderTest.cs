@@ -701,7 +701,7 @@ namespace Microsoft.Data.Sqlite
         [InlineData("SELECT 3.14;", typeof(double))]
         [InlineData("SELECT 'test';", typeof(string))]
         [InlineData("SELECT X'7E57';", typeof(byte[]))]
-        [InlineData("SELECT NULL;", typeof(byte[]))] // column affinity is BLOB since no type is specified
+        [InlineData("SELECT NULL;", typeof(byte[]))]
         public void GetFieldType_works(string sql, Type expected)
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
