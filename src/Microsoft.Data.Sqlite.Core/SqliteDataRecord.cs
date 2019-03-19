@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.Data.Sqlite.Properties;
 using SQLitePCL;
 
@@ -138,14 +139,14 @@ namespace Microsoft.Data.Sqlite
 
                 default:
                     Debug.Assert(false, "Unexpected column type: " + sqliteType);
-                    return "INTEGER";
+                    return "BLOB";
             }
         }
 
         public virtual Type GetFieldType(int ordinal)
         {
             var sqliteType = GetSqliteType(ordinal);
-            if (sqliteType == raw.SQLITE_NULL)
+            if (sqliteType == SQLITE_NULL)
             {
                 sqliteType = GetColumnAffinity(ordinal);
             }
@@ -336,7 +337,7 @@ namespace Microsoft.Data.Sqlite
 
         private int GetColumnAffinity(int ordinal)
         {
-            var columnType = raw.sqlite3_column_decltype(_stmt, ordinal);
+            var columnType = GetDataTypeName(ordinal);
             return Sqlite3AffinityType(columnType);
         }
 
@@ -345,57 +346,29 @@ namespace Microsoft.Data.Sqlite
             if (dataTypeName == null)
             {
                 // if no type is specified then the column has affinity BLOB
-                return raw.SQLITE_BLOB;
+                return SQLITE_BLOB;
             }
 
-            uint h = 0;
-            var aff = -1; // -1 for NUMERICAL affinity
+            var typeRules = new Func<string, int?>[]
+                {
+                    name => Contains(name, "INT") ? SQLITE_INTEGER : (int?)null,
+                    name => Contains(name, "CHAR")
+                        || Contains(name, "CLOB")
+                        || Contains(name, "TEXT")
+                        ? SQLITE_TEXT
+                        : (int?)null,
+                    name => Contains(name, "BLOB") ? SQLITE_BLOB : (int?)null,
+                    name => Contains(name, "REAL")
+                        || Contains(name, "FLOA")
+                        || Contains(name, "DOUB")
+                        ? SQLITE_FLOAT
+                        : (int?)null
+                };
 
-            var idx = 0;
-            while (idx < dataTypeName.Length)
-            {
-                h = (h << 8) + char.ToLower(dataTypeName[idx], CultureInfo.InvariantCulture);
-                idx++;
-                if (h == (('c' << 24) + ('h' << 16) + ('a' << 8) + 'r')) // CHAR
-                {
-                    aff = raw.SQLITE_TEXT;
-                }
-                else if (h == (('c' << 24) + ('l' << 16) + ('o' << 8) + 'b')) // CLOB
-                {
-                    aff = raw.SQLITE_TEXT;
-                }
-                else if (h == (('t' << 24) + ('e' << 16) + ('x' << 8) + 't')) // TEXT
-                {
-                    aff = raw.SQLITE_TEXT;
-                }
-                else if (h == (('b' << 24) + ('l' << 16) + ('o' << 8) + 'b') // BLOB
-                   && (aff == -1 || aff == raw.SQLITE_FLOAT))
-                {
-                    aff = raw.SQLITE_BLOB;
-                }
-                else if (h == (('r' << 24) + ('e' << 16) + ('a' << 8) + 'l') // REAL
-                   && aff == -1)
-                {
-                    aff = raw.SQLITE_FLOAT;
-                }
-                else if (h == (('f' << 24) + ('l' << 16) + ('o' << 8) + 'a') // FLOA
-                   && aff == -1)
-                {
-                    aff = raw.SQLITE_FLOAT;
-                }
-                else if (h == (('d' << 24) + ('o' << 16) + ('u' << 8) + 'b') // DOUB
-                   && aff == -1)
-                {
-                    aff = raw.SQLITE_FLOAT;
-                }
-                else if ((h & 0x00FFFFFF) == (('i' << 16) + ('n' << 8) + 't')) // INT
-                {
-                    aff = raw.SQLITE_INTEGER;
-                    break;
-                }
-            }
-
-            return aff != -1 ? aff : raw.SQLITE_TEXT; // code NUMERICAL affinity as TEXT
+            return typeRules.Select(r => r(dataTypeName)).FirstOrDefault(r => r != null) ?? SQLITE_TEXT; // code NUMERICAL affinity as TEXT
         }
+
+        private static bool Contains(string haystack, string needle)
+            => haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }
