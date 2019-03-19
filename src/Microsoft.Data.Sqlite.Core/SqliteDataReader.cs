@@ -621,7 +621,21 @@ namespace Microsoft.Data.Sqlite
                         var cnt = (long)command.ExecuteScalar();
                         schemaRow[IsUnique] = cnt != 0;
 
-                        schemaRow[DataType] = SqliteDataRecord.GetFieldTypeFromSqliteType(
+                        command.Parameters.Clear();
+                        var columnType = "typeof(\"" + columnName.Replace("\"", "\"\"") + "\")";
+                        command.CommandText = new StringBuilder()
+                            .AppendLine($"SELECT {columnType}")
+                            .AppendLine($"FROM \"{tableName}\"")
+                            .AppendLine($"WHERE {columnType} != 'null'")
+                            .AppendLine($"GROUP BY {columnType}")
+                            .AppendLine("ORDER BY count() DESC")
+                            .AppendLine("LIMIT 1;").ToString();
+
+                        var type = (string)command.ExecuteScalar();
+                        schemaRow[DataType] =
+                            (type != null)
+                            ? SqliteDataRecord.GetFieldType(type)
+                            : SqliteDataRecord.GetFieldTypeFromSqliteType(
                             SqliteDataRecord.Sqlite3AffinityType(dataTypeName));
                     }
 

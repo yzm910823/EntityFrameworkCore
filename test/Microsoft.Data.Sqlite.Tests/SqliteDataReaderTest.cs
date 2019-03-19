@@ -1510,7 +1510,7 @@ namespace Microsoft.Data.Sqlite
         [InlineData("(0.1), (0.01), ('A')", typeof(double))]
         [InlineData("(X'7E57'), (X'577E'), ('A')", typeof(byte[]))]
         [InlineData("(NULL), (NULL), (NULL)", typeof(byte[]))]
-        [InlineData("(NULL), ('A'), ('B')", typeof(byte[]))]
+        [InlineData("(NULL), ('A'), ('B')", typeof(string))]
         public void GetSchemaTable_DataType_works(string values, Type expectedType)
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
