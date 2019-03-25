@@ -17,6 +17,7 @@ namespace Microsoft.Data.Sqlite
     {
         private readonly SqliteConnection _connection;
         private readonly byte[][] _blobCache;
+        private readonly int?[] _typeCache;
         private bool _stepped;
 
         public SqliteDataRecord(sqlite3_stmt stmt, bool hasRows, SqliteConnection connection)
@@ -25,7 +26,8 @@ namespace Microsoft.Data.Sqlite
             HasRows = hasRows;
             _connection = connection;
             _blobCache = new byte[FieldCount][];
-        }
+            _typeCache = new int?[FieldCount];
+    }
 
         public virtual object this[string name]
             => GetValue(GetOrdinal(name));
@@ -144,7 +146,11 @@ namespace Microsoft.Data.Sqlite
             var sqliteType = GetSqliteType(ordinal);
             if (sqliteType == SQLITE_NULL)
             {
-                sqliteType = GetColumnAffinity(ordinal);
+                sqliteType = _typeCache[ordinal] ?? GetColumnAffinity(ordinal);
+            }
+            else
+            {
+                _typeCache[ordinal] = sqliteType;
             }
 
             return GetFieldTypeFromSqliteType(sqliteType);

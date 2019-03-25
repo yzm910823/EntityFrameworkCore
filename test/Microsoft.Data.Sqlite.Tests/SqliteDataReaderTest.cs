@@ -744,6 +744,28 @@ namespace Microsoft.Data.Sqlite
             }
         }
 
+
+        [Fact]
+        public void GetFieldType_works_on_NULL_cached()
+        {
+            using (var connection = new SqliteConnection("Data Source=:memory:"))
+            {
+                connection.Open();
+                connection.ExecuteNonQuery("CREATE TABLE Test(Value FOOBAR);");
+                connection.ExecuteNonQuery("INSERT INTO Test (Value) VALUES ('test'), (NULL);");
+
+                using (var reader = connection.ExecuteReader("SELECT Value FROM Test;"))
+                {
+                    Assert.True(reader.Read());
+                    Assert.Equal(typeof(string), reader.GetFieldType(0));
+                    Assert.Equal("test", reader.GetValue(0));
+                    Assert.True(reader.Read());
+                    Assert.Equal(typeof(string), reader.GetFieldType(0));
+                    Assert.Equal(DBNull.Value, reader.GetValue(0));
+                }
+            }
+        }
+
         [Fact]
         public void GetFieldType_throws_when_ordinal_out_of_range()
         {
