@@ -6,10 +6,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.Extensions.Logging;
@@ -51,7 +51,7 @@ namespace Microsoft.EntityFrameworkCore
             property.Relational().DefaultValue = true;
             property.ValueGenerated = ValueGenerated.OnAdd;
 
-            VerifyWarning(RelationalStrings.LogBoolWithDefaultWarning(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("ImBool", "E"), model);
+            VerifyWarning(RelationalResources.LogBoolWithDefaultWarning(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("ImBool", "E"), model);
         }
 
         [Fact]
@@ -67,7 +67,7 @@ namespace Microsoft.EntityFrameworkCore
             property.Relational().DefaultValueSql = "TRUE";
             property.ValueGenerated = ValueGenerated.OnAddOrUpdate;
 
-            VerifyWarning(RelationalStrings.LogBoolWithDefaultWarning(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("ImBool", "E"), model);
+            VerifyWarning(RelationalResources.LogBoolWithDefaultWarning(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("ImBool", "E"), model);
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace Microsoft.EntityFrameworkCore
             SetPrimaryKey(entityA);
             entityA.FindProperty("Id").Relational().DefaultValue = 1;
 
-            VerifyWarning(RelationalStrings.LogKeyHasDefaultValue(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("Id", "A"), model);
+            VerifyWarning(RelationalResources.LogKeyHasDefaultValue(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("Id", "A"), model);
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace Microsoft.EntityFrameworkCore
             entityA.AddKey(new[] { property });
             property.Relational().DefaultValue = 1;
 
-            VerifyWarning(RelationalStrings.LogKeyHasDefaultValue(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("P0", "A"), model);
+            VerifyWarning(RelationalResources.LogKeyHasDefaultValue(new TestLogger<RelationalLoggingDefinitions>()).GenerateMessage("P0", "A"), model);
         }
 
         [Fact]
@@ -897,6 +897,62 @@ namespace Microsoft.EntityFrameworkCore
 
             Assert.NotSame(index1, index2);
             Assert.Equal(index1.Relational().Name, index2.Relational().Name);
+        }
+
+        [Fact]
+        public virtual void Detects_missing_concurrency_token_on_the_base_type()
+        {
+            var modelBuilder = CreateConventionalModelBuilder();
+            modelBuilder.Entity<Person>().ToTable(nameof(Animal))
+                .Property<byte[]>("Version").IsRowVersion().HasColumnName("Version");
+            modelBuilder.Entity<Animal>().HasOne(a => a.FavoritePerson).WithOne().HasForeignKey<Person>(p => p.Id);
+            modelBuilder.Entity<Cat>()
+                .Property<byte[]>("Version").IsRowVersion().HasColumnName("Version");
+
+            VerifyError(
+                RelationalStrings.MissingConcurrencyColumn(nameof(Animal), "Version", nameof(Animal)),
+                modelBuilder.Model);
+        }
+
+        [Fact]
+        public virtual void Detects_missing_concurrency_token_on_the_sharing_type()
+        {
+            var modelBuilder = CreateConventionalModelBuilder();
+            modelBuilder.Entity<Person>().ToTable(nameof(Animal));
+            modelBuilder.Entity<Animal>().HasOne(a => a.FavoritePerson).WithOne().HasForeignKey<Person>(p => p.Id);
+            modelBuilder.Entity<Animal>().Property<byte[]>("Version").IsRowVersion().HasColumnName("Version");
+
+            VerifyError(
+                RelationalStrings.MissingConcurrencyColumn(nameof(Person), "Version", nameof(Animal)),
+                modelBuilder.Model);
+        }
+
+        [Fact]
+        public virtual void Passes_for_correctly_mapped_concurrency_tokens_with_table_sharing()
+        {
+            var modelBuilder = CreateConventionalModelBuilder();
+            modelBuilder.Entity<Person>().ToTable(nameof(Animal))
+                .Property<byte[]>("Version").IsRowVersion().HasColumnName("Version");
+            modelBuilder.Entity<Animal>()
+                .HasOne(a => a.FavoritePerson).WithOne().HasForeignKey<Person>(p => p.Id);
+            modelBuilder.Entity<Animal>()
+                .Property<byte[]>("Version").IsRowVersion().HasColumnName("Version");
+            modelBuilder.Entity<Cat>();
+            modelBuilder.Entity<Dog>();
+
+            Validate(modelBuilder.Model);
+        }
+
+        [Fact]
+        public virtual void Passes_for_correctly_mapped_concurrency_tokens_with_owned()
+        {
+            var modelBuilder = CreateConventionalModelBuilder();
+            modelBuilder.Entity<Animal>();
+            modelBuilder.Entity<Cat>().OwnsOne(a => a.FavoritePerson,
+                    pb => pb.Property<byte[]>("Version").IsRowVersion().HasColumnName("Version"));
+            modelBuilder.Entity<Dog>();
+
+            Validate(modelBuilder.Model);
         }
 
         [Fact]

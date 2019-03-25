@@ -16,7 +16,6 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Update;
-using Microsoft.EntityFrameworkCore.Update.Internal;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
@@ -43,7 +42,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
             }
         }
 
-        public override int SaveChanges(IReadOnlyList<IUpdateEntry> entries)
+        public override int SaveChanges(IList<IUpdateEntry> entries)
         {
             var rowsAffected = 0;
             var entriesSaved = new HashSet<IUpdateEntry>();
@@ -90,7 +89,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal
         }
 
         public override async Task<int> SaveChangesAsync(
-            IReadOnlyList<IUpdateEntry> entries, CancellationToken cancellationToken = default)
+            IList<IUpdateEntry> entries, CancellationToken cancellationToken = default)
         {
             var rowsAffected = 0;
             var entriesSaved = new HashSet<IUpdateEntry>();

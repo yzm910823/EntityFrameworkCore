@@ -12,13 +12,13 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Update;
-using Microsoft.EntityFrameworkCore.Update.Internal;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
@@ -77,7 +77,10 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual void SetEntityState(
-            EntityState entityState, bool acceptChanges = false, EntityState? forceStateWhenUnknownKey = null)
+            EntityState entityState,
+            bool acceptChanges = false,
+            bool modifyProperties = true,
+            EntityState? forceStateWhenUnknownKey = null)
         {
             var oldState = _stateData.EntityState;
             var adding = PrepareForAdd(entityState);
@@ -89,7 +92,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 StateManager.ValueGenerationManager.Generate(this);
             }
 
-            SetEntityState(oldState, entityState, acceptChanges);
+            SetEntityState(oldState, entityState, acceptChanges, modifyProperties);
         }
 
         /// <summary>
@@ -98,8 +101,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         public virtual async Task SetEntityStateAsync(
             EntityState entityState,
-            bool acceptChanges,
-            EntityState? forceStateWhenUnknownKey,
+            bool acceptChanges = false,
+            bool modifyProperties = true,
+            EntityState? forceStateWhenUnknownKey = null,
             CancellationToken cancellationToken = default)
         {
             var oldState = _stateData.EntityState;
@@ -112,7 +116,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 await StateManager.ValueGenerationManager.GenerateAsync(this, cancellationToken);
             }
 
-            SetEntityState(oldState, entityState, acceptChanges);
+            SetEntityState(oldState, entityState, acceptChanges, modifyProperties);
         }
 
         private EntityState PropagateToUnknownKey(
@@ -165,7 +169,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             return true;
         }
 
-        private void SetEntityState(EntityState oldState, EntityState newState, bool acceptChanges)
+        private void SetEntityState(EntityState oldState, EntityState newState, bool acceptChanges, bool modifyProperties)
         {
             var entityType = (EntityType)EntityType;
 
@@ -189,7 +193,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
             // The entity state can be Modified even if some properties are not modified so always
             // set all properties to modified if the entity state is explicitly set to Modified.
-            if (newState == EntityState.Modified)
+            if (newState == EntityState.Modified
+                && modifyProperties)
             {
                 _stateData.FlagAllProperties(entityType.PropertyCount(), PropertyFlag.Modified, flagged: true);
 
@@ -632,8 +637,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual TProperty GetRelationshipSnapshotValue<TProperty>([NotNull] IPropertyBase propertyBase)
-            =>
-                ((Func<InternalEntityEntry, TProperty>)propertyBase.GetPropertyAccessors().RelationshipSnapshotGetter)(
+            => ((Func<InternalEntityEntry, TProperty>)propertyBase.GetPropertyAccessors().RelationshipSnapshotGetter)(
                     this);
 
         /// <summary>
@@ -706,11 +710,11 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual void RemoveFromCollection([NotNull] INavigation navigation, [NotNull] InternalEntityEntry value)
+        public virtual bool RemoveFromCollection([NotNull] INavigation navigation, [NotNull] InternalEntityEntry value)
         {
             Debug.Assert(!navigation.IsShadowProperty);
 
-            ((Navigation)navigation).CollectionAccessor.Remove(Entity, value.Entity);
+            return ((Navigation)navigation).CollectionAccessor.Remove(Entity, value.Entity);
         }
 
         /// <summary>
@@ -750,8 +754,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual void SetOriginalValue(
-            [NotNull] IPropertyBase propertyBase, [CanBeNull] object value,
-            int index = -1)
+            [NotNull] IPropertyBase propertyBase, [CanBeNull] object value, int index = -1)
         {
             EnsureOriginalValues();
 
@@ -1493,7 +1496,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             => _stateData.IsPropertyFlagged(navigation.GetIndex(), PropertyFlag.IsLoaded);
 
         public override string ToString()
-            => $"{this.BuildCurrentValuesString(EntityType.FindPrimaryKey().Properties)} {EntityState} {EntityType}";
+            => $"{this.BuildCurrentValuesString(EntityType.FindPrimaryKey().Properties)} {EntityState}"
+               + $"{(((IUpdateEntry)this).SharedIdentityEntry == null ? "" : " Shared")} {EntityType}";
 
         IUpdateEntry IUpdateEntry.SharedIdentityEntry => SharedIdentityEntry;
 

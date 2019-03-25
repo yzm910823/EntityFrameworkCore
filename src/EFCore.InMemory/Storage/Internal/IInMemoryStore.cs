@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 using JetBrains.Annotations;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.InMemory.ValueGeneration.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -48,6 +48,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Storage.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         int ExecuteTransaction(
-            [NotNull] IReadOnlyList<IUpdateEntry> entries, [NotNull] IDiagnosticsLogger<DbLoggerCategory.Update> updateLogger);
+            [NotNull] IList<IUpdateEntry> entries, [NotNull] IDiagnosticsLogger<DbLoggerCategory.Update> updateLogger);
     }
 }

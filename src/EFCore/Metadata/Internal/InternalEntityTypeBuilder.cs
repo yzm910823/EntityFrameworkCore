@@ -9,7 +9,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
-using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
 
@@ -2661,7 +2661,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                             ? keyPropertyName
                             : baseName + keyPropertyName;
                         string propertyName;
-                        var clrType = isRequired ? keyPropertyType : keyPropertyType.MakeNullable();
+                        var clrType = keyPropertyType.MakeNullable(!isRequired);
                         var index = -1;
                         while (true)
                         {
