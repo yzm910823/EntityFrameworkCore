@@ -53,7 +53,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     parameter,
                     ValueBuffer.GetValueMethod,
                     Expression.Constant(property.GetIndex())),
-                property.ClrType);
+                property.GetBackingType());
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

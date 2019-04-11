@@ -508,7 +508,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 equals = ValuesEqualFunc(property);
             }
 
-            var defaultValue = property.ClrType.GetDefaultValue();
+            var defaultValue = property.GetBackingType().GetDefaultValue();
             var value = ReadPropertyValue(property);
             if (!equals(value, defaultValue))
             {
@@ -613,9 +613,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         private T ReadTemporaryValue<T>(int storeGeneratedIndex)
             => _temporaryValues.GetValue<T>(storeGeneratedIndex);
 
-        internal static readonly MethodInfo GetCurrentValueMethod
-            =
-            typeof(InternalEntityEntry).GetTypeInfo().GetDeclaredMethods(nameof(GetCurrentValue)).Single(
+        internal static readonly MethodInfo GetBackingCurrentValueMethod
+            = typeof(InternalEntityEntry).GetTypeInfo().GetDeclaredMethods(nameof(GetBackingCurrentValue)).Single(
                 m => m.IsGenericMethod);
 
         /// <summary>
@@ -623,22 +622,29 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual TProperty GetCurrentValue<TProperty>(IPropertyBase propertyBase)
-            => ((Func<InternalEntityEntry, TProperty>)propertyBase.GetPropertyAccessors().CurrentValueGetter)(this);
+            => ((Func<InternalEntityEntry, TProperty>)propertyBase.GetPropertyAccessors().ConvertedCurrentValueGetter)(this);
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public virtual TMember GetBackingCurrentValue<TMember>([NotNull] IPropertyBase propertyBase)
+            => ((Func<InternalEntityEntry, TMember>)propertyBase.GetPropertyAccessors().CurrentValueGetter)(this);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual TProperty GetOriginalValue<TProperty>(IProperty property)
-            => ((Func<InternalEntityEntry, TProperty>)property.GetPropertyAccessors().OriginalValueGetter)(this);
+            => ((Func<InternalEntityEntry, TProperty>)property.GetPropertyAccessors().ConvertedOriginalValueGetter)(this);
+
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual TProperty GetRelationshipSnapshotValue<TProperty>([NotNull] IPropertyBase propertyBase)
-            => ((Func<InternalEntityEntry, TProperty>)propertyBase.GetPropertyAccessors().RelationshipSnapshotGetter)(
-                    this);
+        public virtual TProperty GetBackingOriginalValue<TProperty>(IProperty property)
+            => ((Func<InternalEntityEntry, TProperty>)property.GetPropertyAccessors().OriginalValueGetter)(this);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

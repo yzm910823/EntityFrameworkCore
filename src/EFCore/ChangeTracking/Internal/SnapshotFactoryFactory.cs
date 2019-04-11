@@ -51,7 +51,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 var index = GetPropertyIndex(propertyBase);
                 if (index >= 0)
                 {
-                    types[index] = (propertyBase as IProperty)?.ClrType ?? typeof(object);
+                    types[index] = propertyBase.GetBackingType();
                     propertyBases[index] = propertyBase;
                 }
             }
@@ -107,6 +107,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 {
                     arguments[i] = Expression.Constant(null);
                     types[i] = typeof(object);
+
                     continue;
                 }
 
@@ -116,15 +117,20 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     if (storeGeneratedIndex != -1)
                     {
                         arguments[i] = CreateReadValueExpression(parameter, property);
+
                         continue;
                     }
                 }
+
+                var backingType = propertyBase.GetBackingType();
 
                 if (propertyBase.IsShadowProperty())
                 {
                     arguments[i] = CreateSnapshotValueExpression(
                         CreateReadShadowValueExpression(parameter, propertyBase),
-                        propertyBase);
+                        propertyBase,
+                        backingType);
+
                     continue;
                 }
 
@@ -137,14 +143,15 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         {
                             Expression.Constant(propertyBase.Name)
                         });
-                    if (propertyBase.PropertyInfo.PropertyType != propertyBase.ClrType)
+
+                    if (propertyBase.PropertyInfo.PropertyType != backingType)
                     {
                         indexerAccessExpression =
-                            Expression.Convert(indexerAccessExpression, propertyBase.ClrType);
+                            Expression.Convert(indexerAccessExpression, backingType);
                     }
 
-                    arguments[i] =
-                        CreateSnapshotValueExpression(indexerAccessExpression, propertyBase);
+                    arguments[i] = CreateSnapshotValueExpression(indexerAccessExpression, propertyBase, backingType);
+
                     continue;
                 }
 
@@ -152,17 +159,20 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     entityVariable,
                     propertyBase.GetMemberInfo(forConstruction: false, forSet: false));
 
-                if (memberAccess.Type != propertyBase.ClrType)
+                if (propertyBase is INavigation navigation
+                    && navigation.IsCollection())
                 {
-                    memberAccess = Expression.Convert(memberAccess, propertyBase.ClrType);
-                }
+                    if (memberAccess.Type != typeof(IEnumerable<object>))
+                    {
+                        memberAccess = Expression.Convert(memberAccess, typeof(IEnumerable<object>));
+                    }
 
-                arguments[i] = (propertyBase as INavigation)?.IsCollection() ?? false
-                    ? Expression.Call(
-                        null,
-                        _snapshotCollectionMethod,
-                        memberAccess)
-                    : CreateSnapshotValueExpression(memberAccess, propertyBase);
+                    arguments[i] = Expression.Call(null, _snapshotCollectionMethod, memberAccess);
+                }
+                else
+                {
+                    arguments[i] =  CreateSnapshotValueExpression(memberAccess, propertyBase, backingType);
+                }
             }
 
             var constructorExpression = Expression.Convert(
@@ -190,7 +200,10 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 : constructorExpression;
         }
 
-        private Expression CreateSnapshotValueExpression(Expression expression, IPropertyBase propertyBase)
+        private Expression CreateSnapshotValueExpression(
+            Expression expression,
+            IPropertyBase propertyBase,
+            Type backingType)
         {
             if (propertyBase is IProperty property)
             {
@@ -203,10 +216,10 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         expression,
                         comparer.SnapshotExpression.Body);
 
-                    expression = propertyBase.ClrType.IsNullableType()
+                    expression = backingType.IsNullableType()
                         ? Expression.Condition(
-                            Expression.Equal(expression, Expression.Constant(null, propertyBase.ClrType)),
-                            Expression.Constant(null, propertyBase.ClrType),
+                            Expression.Equal(expression, Expression.Constant(null, backingType)),
+                            Expression.Constant(null, backingType),
                             snapshotExpression)
                         : snapshotExpression;
                 }
@@ -229,7 +242,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             [CanBeNull] ParameterExpression parameter, [NotNull] IPropertyBase property)
             => Expression.Call(
                 parameter,
-                InternalEntityEntry.ReadShadowValueMethod.MakeGenericMethod(property.ClrType),
+                InternalEntityEntry.ReadShadowValueMethod.MakeGenericMethod(property.GetBackingType()),
                 Expression.Constant(property.GetShadowIndex()));
 
         /// <summary>
@@ -237,11 +250,11 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual Expression CreateReadValueExpression(
-            [CanBeNull] ParameterExpression parameter, [NotNull] IPropertyBase property)
+            [CanBeNull] ParameterExpression parameter, [NotNull] IPropertyBase propertyBase)
             => Expression.Call(
                 parameter,
-                InternalEntityEntry.GetCurrentValueMethod.MakeGenericMethod(property.ClrType),
-                Expression.Constant(property, typeof(IProperty)));
+                InternalEntityEntry.GetBackingCurrentValueMethod.MakeGenericMethod(propertyBase.GetBackingType()),
+                Expression.Constant(propertyBase, typeof(IPropertyBase)));
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

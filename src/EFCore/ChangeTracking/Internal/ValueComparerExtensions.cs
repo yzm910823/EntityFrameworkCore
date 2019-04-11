@@ -48,9 +48,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
         private class NonNullNullableValueComparer<T> : ValueComparer<T>
         {
-#pragma warning disable CA1061 // Do not hide base class methods
             public NonNullNullableValueComparer(
-#pragma warning restore CA1061 // Do not hide base class methods
                 LambdaExpression equalsExpression,
                 LambdaExpression hashCodeExpression,
                 LambdaExpression snapshotExpression)

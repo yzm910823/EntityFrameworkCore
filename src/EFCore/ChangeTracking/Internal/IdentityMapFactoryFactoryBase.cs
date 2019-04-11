@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
@@ -19,6 +19,6 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected virtual Type GetKeyType([NotNull] IKey key)
-            => key.Properties.Count > 1 ? typeof(object[]) : key.Properties.First().ClrType;
+            => key.Properties.Count > 1 ? typeof(object[]) : key.Properties[0].GetBackingType();
     }
 }

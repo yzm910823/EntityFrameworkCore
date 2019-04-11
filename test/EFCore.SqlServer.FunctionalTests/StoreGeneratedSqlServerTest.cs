@@ -161,6 +161,8 @@ namespace Microsoft.EntityFrameworkCore
                     {
                         b.Property(e => e.NullableAsNonNullable).HasComputedColumnSql("1");
                         b.Property(e => e.NonNullableAsNullable).HasComputedColumnSql("1");
+                        b.Property(e => e.NullableBackedBool).HasDefaultValue(true);
+                        b.Property(e => e.NullableBackedInt).HasDefaultValue(-1);
                     });
 
                 base.OnModelCreating(modelBuilder, context);

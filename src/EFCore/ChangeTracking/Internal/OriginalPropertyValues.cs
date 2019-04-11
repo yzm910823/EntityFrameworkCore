@@ -27,14 +27,14 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public override TValue GetValue<TValue>(string propertyName)
-            => InternalEntry.GetOriginalValue<TValue>(InternalEntry.EntityType.GetProperty(propertyName));
+            => InternalEntry.GetBackingOriginalValue<TValue>(InternalEntry.EntityType.GetProperty(propertyName));
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public override TValue GetValue<TValue>(IProperty property)
-            => InternalEntry.GetOriginalValue<TValue>(InternalEntry.EntityType.CheckPropertyBelongsToType(property));
+            => InternalEntry.GetBackingOriginalValue<TValue>(InternalEntry.EntityType.CheckPropertyBelongsToType(property));
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

@@ -42,7 +42,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         CoreStrings.OriginalValueNotTracked(property.Name, property.DeclaringEntityType.DisplayName()));
                 }
 
-                return IsEmpty ? entry.GetCurrentValue<T>(property) : _values.GetValue<T>(index);
+                return IsEmpty ? entry.GetBackingCurrentValue<T>(property) : _values.GetValue<T>(index);
             }
 
             public void SetValue(IProperty property, object value, int index)

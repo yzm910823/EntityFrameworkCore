@@ -60,7 +60,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         /// </summary>
         public new virtual IEnumerable<TProperty> CurrentValue
         {
-            get => this.GetInfrastructure().GetCurrentValue<IEnumerable<TProperty>>(Metadata);
+            get => this.GetInfrastructure().GetBackingCurrentValue<IEnumerable<TProperty>>(Metadata);
             [param: CanBeNull] set => base.CurrentValue = value;
         }
 

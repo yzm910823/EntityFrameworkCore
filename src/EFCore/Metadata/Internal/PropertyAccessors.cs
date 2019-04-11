@@ -19,15 +19,23 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         public PropertyAccessors(
             [NotNull] Delegate currentValueGetter,
+            [NotNull] Delegate convertedCurrentValueGetter,
             [NotNull] Delegate preStoreGeneratedCurrentValueGetter,
+            [NotNull] Delegate convertedPreStoreGeneratedCurrentValueGetter,
             [CanBeNull] Delegate originalValueGetter,
+            [CanBeNull] Delegate convertedOriginalValueGetter,
             [NotNull] Delegate relationshipSnapshotGetter,
+            [NotNull] Delegate convertedRelationshipSnapshotGetter,
             [CanBeNull] Func<ValueBuffer, object> valueBufferGetter)
         {
             CurrentValueGetter = currentValueGetter;
+            ConvertedCurrentValueGetter = convertedCurrentValueGetter;
             PreStoreGeneratedCurrentValueGetter = preStoreGeneratedCurrentValueGetter;
+            ConvertedPreStoreGeneratedCurrentValueGetter = convertedPreStoreGeneratedCurrentValueGetter;
             OriginalValueGetter = originalValueGetter;
+            ConvertedOriginalValueGetter = convertedOriginalValueGetter;
             RelationshipSnapshotGetter = relationshipSnapshotGetter;
+            ConvertedRelationshipSnapshotGetter = convertedRelationshipSnapshotGetter;
             ValueBufferGetter = valueBufferGetter;
         }
 
@@ -41,7 +49,19 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
+        public Delegate ConvertedCurrentValueGetter { get; }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
         public Delegate PreStoreGeneratedCurrentValueGetter { get; }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public Delegate ConvertedPreStoreGeneratedCurrentValueGetter { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -53,7 +73,19 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
+        public Delegate ConvertedOriginalValueGetter { get; }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
         public Delegate RelationshipSnapshotGetter { get; }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public Delegate ConvertedRelationshipSnapshotGetter { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

@@ -1069,6 +1069,24 @@ namespace Microsoft.EntityFrameworkCore
                 });
         }
 
+        [Fact]
+        public virtual void Nullable_fields_can_be_used_to_handle_defaults()
+        {
+            ExecuteWithStrategyInTransaction(
+                context =>
+                {
+                    var entity = context.Add(new WithBackingFields()).Entity;
+
+                    context.SaveChanges();
+                },
+                context =>
+                {
+                    var entity = context.Set<WithBackingFields>().Single();
+                    Assert.True(entity.NullableBackedBool);
+                    Assert.Equal(-1, entity.NullableBackedInt);
+                });
+        }
+
         protected class Darwin
         {
             public int Id { get; set; }
@@ -1095,6 +1113,7 @@ namespace Microsoft.EntityFrameworkCore
             public string AlwaysComputed { get; set; }
             public string AlwaysComputedReadOnlyBeforeSave { get; set; }
             public string AlwaysComputedReadOnlyAfterSave { get; set; }
+
         }
 
         protected class Anais
@@ -1158,7 +1177,6 @@ namespace Microsoft.EntityFrameworkCore
 #pragma warning restore RCS1085 // Use auto-implemented property.
 
             private int? _nullableAsNonNullable = 0;
-
             public int NullableAsNonNullable
             {
                 get => (int)_nullableAsNonNullable;
@@ -1166,11 +1184,24 @@ namespace Microsoft.EntityFrameworkCore
             }
 
             private int _nonNullableAsNullable;
-
             public int? NonNullableAsNullable
             {
                 get => _nonNullableAsNullable;
                 set => _nonNullableAsNullable = (int)value;
+            }
+
+            private bool? _nullableBackedBool;
+            public bool NullableBackedBool
+            {
+                get => _nullableBackedBool ?? false;
+                set => _nullableBackedBool = value;
+            }
+
+            private int? _nullableBackedInt;
+            public int NullableBackedInt
+            {
+                get => _nullableBackedInt ?? 0;
+                set => _nullableBackedInt = value;
             }
         }
 
