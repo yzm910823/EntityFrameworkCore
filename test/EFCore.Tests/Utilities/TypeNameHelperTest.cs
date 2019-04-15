@@ -183,23 +183,23 @@ namespace Microsoft.EntityFrameworkCore.Utilities
             Assert.Equal(expected, type.DisplayName(fullName));
         }
 
-        private class A
+        public class A
         {
         }
 
-        private class B<T>
+        public class B<T>
         {
         }
 
-        private class C<T1, T2>
+        public class C<T1, T2>
         {
         }
 
-        private class PartiallyClosedGeneric<T> : C<T, int>
+        public class PartiallyClosedGeneric<T> : C<T, int>
         {
         }
 
-        private static class Outer<T>
+        public static class Outer<T>
         {
             public class D
             {
@@ -214,7 +214,7 @@ namespace Microsoft.EntityFrameworkCore.Utilities
             }
         }
 
-        private static class OuterGeneric<T1>
+        public static class OuterGeneric<T1>
         {
             public static class InnerNonGeneric
             {
@@ -231,7 +231,7 @@ namespace Microsoft.EntityFrameworkCore.Utilities
             }
         }
 
-        private static class Level1<T1>
+        public static class Level1<T1>
         {
             public static class Level2<T2>
             {

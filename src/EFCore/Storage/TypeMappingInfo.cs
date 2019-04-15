@@ -85,6 +85,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             IsUnicode = isUnicode ?? mappingHints?.IsUnicode ?? fallbackUnicode;
             IsRowVersion = property.IsConcurrencyToken && property.ValueGenerated == ValueGenerated.OnAddOrUpdate;
             ClrType = (customConverter?.ProviderClrType ?? property.ClrType).UnwrapNullableType();
+            PropertyInfoType = property.PropertyInfo?.PropertyType?.UnwrapNullableType();
             Scale = mappingHints?.Scale ?? fallbackScale;
             Precision = mappingHints?.Precision ?? fallbackPrecision;
         }
@@ -103,7 +104,9 @@ namespace Microsoft.EntityFrameworkCore.Storage
             int? size = null,
             int? precision = null,
             int? scale = null)
-            : this(Check.NotNull(member, nameof(member)).GetMemberType())
+            : this(
+                Check.NotNull(member, nameof(member)).GetMemberType(),
+                (member as PropertyInfo)?.PropertyType)
         {
             IsUnicode = unicode;
             Size = size;
@@ -115,6 +118,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
         ///     Creates a new instance of <see cref="TypeMappingInfo" />.
         /// </summary>
         /// <param name="type"> The CLR type in the model for which mapping is needed. </param>
+        /// <param name="propertyInfoType"> The CLR type of the <see cref="PropertyInfo"/> for this property, if it exists. </param>
         /// <param name="keyOrIndex"> If <c>true</c>, then a special mapping for a key or index may be returned. </param>
         /// <param name="unicode"> Specifies Unicode or ANSI mapping, or <c>null</c> for default. </param>
         /// <param name="size"> Specifies a size for the mapping, or <c>null</c> for default. </param>
@@ -123,6 +127,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
         /// <param name="scale"> Specifies a scale for the mapping, or <c>null</c> for default. </param>
         public TypeMappingInfo(
             [CanBeNull] Type type = null,
+            [CanBeNull] Type propertyInfoType = null,
             bool keyOrIndex = false,
             bool? unicode = null,
             int? size = null,
@@ -131,6 +136,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             int? scale = null)
         {
             ClrType = type?.UnwrapNullableType();
+            PropertyInfoType = propertyInfoType?.UnwrapNullableType();
 
             IsKeyOrIndex = keyOrIndex;
             Size = size;
@@ -170,6 +176,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             Precision = precision ?? source.Precision ?? mappingHints?.Precision;
 
             ClrType = converter.ProviderClrType.UnwrapNullableType();
+            PropertyInfoType = source.PropertyInfoType;
         }
 
         /// <summary>
@@ -217,12 +224,20 @@ namespace Microsoft.EntityFrameworkCore.Storage
         public Type ClrType { get; }
 
         /// <summary>
+        ///     The CLR type of the <see cref="PropertyInfo"/> for this property, if it exists.
+        ///     May be null if type information is conveyed via other means (e.g. the store name in a relational
+        ///     type mapping info)
+        /// </summary>
+        public Type PropertyInfoType { get; }
+
+        /// <summary>
         ///     Compares this <see cref="TypeMappingInfo" /> to another to check if they represent the same mapping.
         /// </summary>
         /// <param name="other"> The other object. </param>
         /// <returns> <c>True</c> if they represent the same mapping; <c>false</c> otherwise. </returns>
         public bool Equals(TypeMappingInfo other)
             => ClrType == other.ClrType
+               && PropertyInfoType == other.PropertyInfoType
                && IsKeyOrIndex == other.IsKeyOrIndex
                && Size == other.Size
                && IsUnicode == other.IsUnicode
@@ -248,6 +263,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
         {
             var hashCode = ClrType?.GetHashCode() ?? 0;
             hashCode = (hashCode * 397) ^ IsKeyOrIndex.GetHashCode();
+            hashCode = (hashCode * 397) ^ PropertyInfoType?.GetHashCode() ?? 0;
             hashCode = (hashCode * 397) ^ (Size?.GetHashCode() ?? 0);
             hashCode = (hashCode * 397) ^ (IsUnicode?.GetHashCode() ?? 0);
             hashCode = (hashCode * 397) ^ (IsRowVersion?.GetHashCode() ?? 0);

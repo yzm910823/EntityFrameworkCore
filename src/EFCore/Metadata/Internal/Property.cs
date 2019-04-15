@@ -21,6 +21,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     /// </summary>
     public class Property : PropertyBase, IMutableProperty, IConventionProperty
     {
+        private readonly Type _clrType;
         private bool? _isConcurrencyToken;
         private bool? _isNullable;
         private ValueGenerated? _valueGenerated;
@@ -51,7 +52,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             Check.NotNull(declaringEntityType, nameof(declaringEntityType));
 
             DeclaringEntityType = declaringEntityType;
-            ClrType = clrType;
+            _clrType = clrType;
             _configurationSource = configurationSource;
             _typeConfigurationSource = typeConfigurationSource;
 
@@ -91,7 +92,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        public override Type ClrType { [DebuggerStepThrough] get; }
+        public override Type ClrType
+            => !this.IsIndexedProperty()
+               && this.TryGetMemberInfo(forConstruction: false, forSet: true, out var memberInfo, out _)
+                ? memberInfo.GetMemberType()
+                : _clrType;
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to

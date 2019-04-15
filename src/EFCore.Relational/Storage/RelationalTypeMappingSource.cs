@@ -104,6 +104,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             [CanBeNull] IReadOnlyList<IProperty> principals)
         {
             Type providerClrType = null;
+            Type propertyInfoClrType = null;
             ValueConverter customConverter = null;
             if (principals != null)
             {
@@ -116,6 +117,12 @@ namespace Microsoft.EntityFrameworkCore.Storage
                         if (providerType != null)
                         {
                             providerClrType = providerType.UnwrapNullableType();
+                        }
+
+                        var propertyType = principal.PropertyInfo?.PropertyType;
+                        if (propertyType != null)
+                        {
+                            propertyInfoClrType = propertyType.UnwrapNullableType();
                         }
                     }
 
@@ -135,17 +142,27 @@ namespace Microsoft.EntityFrameworkCore.Storage
                 k =>
                 {
                     var (info, providerType, converter) = k;
+
+                    var sourceType = info.ClrType;
+
+                    var isObjectMapping = sourceType == typeof(object)
+                                          && propertyInfoClrType != null;
+
+                    if (isObjectMapping)
+                    {
+                        sourceType = propertyInfoClrType;
+                    }
+
                     var mapping = providerType == null
-                                  || providerType == info.ClrType
+                                  || providerType == sourceType
                         ? FindMapping(info)
                         : null;
 
                     if (mapping == null)
                     {
-                        var sourceType = info.ClrType;
-
                         if (sourceType != null)
                         {
+
                             foreach (var converterInfo in Dependencies
                                 .ValueConverterSelector
                                 .Select(sourceType, providerType))
@@ -173,10 +190,23 @@ namespace Microsoft.EntityFrameworkCore.Storage
                                 if (mapping != null)
                                 {
                                     mapping = (RelationalTypeMapping)mapping.Clone(converterInfo.Create());
+
+
                                     break;
                                 }
                             }
                         }
+                    }
+
+                    if (mapping != null
+                        && isObjectMapping)
+                    {
+                        var objectConverter =
+                            (ValueConverter)Activator.CreateInstance(
+                                typeof(CastingConverter<,>).MakeGenericType(typeof(object), propertyInfoClrType),
+                                (ConverterMappingHints)null);
+
+                        mapping = (RelationalTypeMapping)mapping.Clone(objectConverter);
                     }
 
                     if (mapping != null

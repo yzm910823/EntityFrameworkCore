@@ -122,6 +122,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             foreach (var property in model.GetEntityTypes().SelectMany(e => e.GetDeclaredProperties()))
             {
                 if (property.ClrType == typeof(bool)
+                    && (property.FieldInfo == null || property.FieldInfo.FieldType == typeof(bool))
                     && property.ValueGenerated != ValueGenerated.Never
                     && (IsNotNullAndFalse(property.Relational().DefaultValue)
                         || property.Relational().DefaultValueSql != null))

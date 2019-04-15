@@ -27,7 +27,13 @@ namespace Microsoft.EntityFrameworkCore
 
         protected class User2 : IUser2
         {
-            public int Id { get; set; }
+            private object _id;
+
+            public int Id
+            {
+                get => (int)_id;
+                set => _id = value;
+            }
         }
 
         protected class LoginSession
