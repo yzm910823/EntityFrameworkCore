@@ -3,7 +3,9 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.Data.Sqlite.Properties;
 using SQLitePCL;
 
@@ -15,6 +17,7 @@ namespace Microsoft.Data.Sqlite
     {
         private readonly SqliteConnection _connection;
         private readonly byte[][] _blobCache;
+        private readonly int?[] _typeCache;
         private bool _stepped;
 
         public SqliteDataRecord(sqlite3_stmt stmt, bool hasRows, SqliteConnection connection)
@@ -23,7 +26,8 @@ namespace Microsoft.Data.Sqlite
             HasRows = hasRows;
             _connection = connection;
             _blobCache = new byte[FieldCount][];
-        }
+            _typeCache = new int?[FieldCount];
+    }
 
         public virtual object this[string name]
             => GetValue(GetOrdinal(name));
@@ -140,6 +144,20 @@ namespace Microsoft.Data.Sqlite
         public virtual Type GetFieldType(int ordinal)
         {
             var sqliteType = GetSqliteType(ordinal);
+            if (sqliteType == SQLITE_NULL)
+            {
+                sqliteType = _typeCache[ordinal] ?? GetColumnAffinity(ordinal);
+            }
+            else
+            {
+                _typeCache[ordinal] = sqliteType;
+            }
+
+            return GetFieldTypeFromSqliteType(sqliteType);
+        }
+
+        internal static Type GetFieldTypeFromSqliteType(int sqliteType)
+        {
             switch (sqliteType)
             {
                 case SQLITE_INTEGER:
@@ -308,5 +326,41 @@ namespace Microsoft.Data.Sqlite
 
             return blob;
         }
+
+        private int GetColumnAffinity(int ordinal)
+        {
+            var columnType = GetDataTypeName(ordinal);
+            return Sqlite3AffinityType(columnType);
+        }
+
+        internal static int Sqlite3AffinityType(string dataTypeName)
+        {
+            if (dataTypeName == null)
+            {
+                // if no type is specified then the column has affinity BLOB
+                return SQLITE_BLOB;
+            }
+
+            var typeRules = new Func<string, int?>[]
+                {
+                    name => Contains(name, "INT") ? SQLITE_INTEGER : (int?)null,
+                    name => Contains(name, "CHAR")
+                        || Contains(name, "CLOB")
+                        || Contains(name, "TEXT")
+                        ? SQLITE_TEXT
+                        : (int?)null,
+                    name => Contains(name, "BLOB") ? SQLITE_BLOB : (int?)null,
+                    name => Contains(name, "REAL")
+                        || Contains(name, "FLOA")
+                        || Contains(name, "DOUB")
+                        ? SQLITE_FLOAT
+                        : (int?)null
+                };
+
+            return typeRules.Select(r => r(dataTypeName)).FirstOrDefault(r => r != null) ?? SQLITE_TEXT; // code NUMERICAL affinity as TEXT
+        }
+
+        private static bool Contains(string haystack, string needle)
+            => haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }
