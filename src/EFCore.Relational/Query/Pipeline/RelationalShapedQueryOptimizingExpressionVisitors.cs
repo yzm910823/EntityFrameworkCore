@@ -10,16 +10,15 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
 {
     public class RelationalShapedQueryOptimizer : ShapedQueryOptimizer
     {
-        private readonly QueryCompilationContext _queryCompilationContext;
-
         public RelationalShapedQueryOptimizer(
             QueryCompilationContext queryCompilationContext,
             ISqlExpressionFactory sqlExpressionFactory)
         {
-            _queryCompilationContext = queryCompilationContext;
+            QueryCompilationContext = queryCompilationContext;
             SqlExpressionFactory = sqlExpressionFactory;
         }
 
+        protected QueryCompilationContext QueryCompilationContext { get; private set; }
         protected ISqlExpressionFactory SqlExpressionFactory { get; private set; }
 
         public override Expression Visit(Expression query)
@@ -29,12 +28,13 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
             query = new CollectionJoinApplyingExpressionVisitor().Visit(query);
             query = new SelectExpressionTableAliasUniquifyingExpressionVisitor().Visit(query);
 
-            if (!RelationalOptionsExtension.Extract(_queryCompilationContext.ContextOptions).UseRelationalNulls)
+            var useRelationalNulls = RelationalOptionsExtension.Extract(QueryCompilationContext.ContextOptions).UseRelationalNulls;
+            if (!useRelationalNulls)
             {
                 query = new NullSemanticsRewritingVisitor(SqlExpressionFactory).Visit(query);
             }
 
-            query = new SqlExpressionOptimizingVisitor(SqlExpressionFactory).Visit(query);
+            query = new SqlExpressionOptimizingVisitor(SqlExpressionFactory, useRelationalNulls).Visit(query);
             query = new NullComparisonTransformingExpressionVisitor().Visit(query);
 
             if (query is ShapedQueryExpression shapedQueryExpression)

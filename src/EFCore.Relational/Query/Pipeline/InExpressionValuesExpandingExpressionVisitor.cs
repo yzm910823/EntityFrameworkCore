@@ -87,7 +87,9 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
 
                     if (updatedInExpression == null && nullCheckExpression == null)
                     {
-                        return _sqlExpressionFactory.Equal(_sqlExpressionFactory.Constant(true), _sqlExpressionFactory.Constant(false));
+                        return inExpression.Negated
+                            ? _sqlExpressionFactory.Equal(_sqlExpressionFactory.Constant(true), _sqlExpressionFactory.Constant(true))
+                            : _sqlExpressionFactory.Equal(_sqlExpressionFactory.Constant(true), _sqlExpressionFactory.Constant(false));
                     }
 
                     return (SqlExpression)updatedInExpression ?? nullCheckExpression;

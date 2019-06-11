@@ -1056,10 +1056,9 @@ WHERE CAST(1 AS bit) = CAST(0 AS bit)");
         {
             await base.Contains_with_local_collection_empty_inline(isAsync);
 
-            // issue #16037
-//            AssertSql(
-//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-//FROM [Customers] AS [c]");
+            AssertSql(
+                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]");
         }
 
         public override async Task Contains_top_level(bool isAsync)
@@ -1292,11 +1291,10 @@ WHERE (([c].[City] = N'México D.F.') AND [c].[City] IS NOT NULL) AND [c].[Custo
         {
             await base.Where_subquery_all_not_equals_operator(isAsync);
 
-            // issue #16037
-//            AssertSql(
-//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-//FROM [Customers] AS [c]
-//WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
+            AssertSql(
+                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]
+WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
         }
 
         public override async Task Where_subquery_all_not_equals(bool isAsync)
@@ -1306,29 +1304,31 @@ WHERE (([c].[City] = N'México D.F.') AND [c].[City] IS NOT NULL) AND [c].[Custo
             AssertSql(
                 @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
-WHERE NOT ([c].[CustomerID] IN (N'ABCDE', N'ALFKI', N'ANATR'))");
+WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
         }
 
         public override async Task Where_subquery_all_not_equals_static(bool isAsync)
         {
             await base.Where_subquery_all_not_equals_static(isAsync);
 
-            // issue #16037
-//            AssertSql(
-//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-//FROM [Customers] AS [c]
-//WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
+            AssertSql(
+                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]
+WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
         }
 
         public override async Task Where_subquery_where_all(bool isAsync)
         {
             await base.Where_subquery_where_all(isAsync);
 
-            // issue #15994
-//            AssertSql(
-//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-//FROM [Customers] AS [c]
-//WHERE ([c].[City] = N'México D.F.') AND [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
+            AssertSql(
+                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]
+WHERE (([c].[City] = N'México D.F.') AND [c].[City] IS NOT NULL) AND [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')",
+                //
+                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]
+WHERE (([c].[City] = N'México D.F.') AND [c].[City] IS NOT NULL) AND [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI', N'ANATR')");
         }
 
         public override async Task Cast_to_same_Type_Count_works(bool isAsync)

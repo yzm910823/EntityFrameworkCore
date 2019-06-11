@@ -2024,7 +2024,7 @@ SELECT CASE
             ORDER BY [c].[CustomerID]
             OFFSET @__p_0 ROWS FETCH NEXT @__p_1 ROWS ONLY
         ) AS [t]
-        WHERE ([t].[CustomerID] IS NULL AND (CAST(0 AS bit) = CAST(1 AS bit))) OR ((N'B' IS NULL AND (CAST(0 AS bit) = CAST(1 AS bit))) OR NOT ([t].[CustomerID] LIKE N'B%'))) THEN CAST(1 AS bit)
+        WHERE ([t].[CustomerID] IS NULL AND (CAST(0 AS bit) = CAST(1 AS bit))) OR NOT ([t].[CustomerID] LIKE N'B%')) THEN CAST(1 AS bit)
     ELSE CAST(0 AS bit)
 END");
         }
@@ -2045,7 +2045,7 @@ SELECT CASE
             FROM [Customers] AS [c]
             ORDER BY [c].[CustomerID]
         ) AS [t]
-        WHERE ([t].[CustomerID] IS NULL AND (CAST(0 AS bit) = CAST(1 AS bit))) OR ((N'A' IS NULL AND (CAST(0 AS bit) = CAST(1 AS bit))) OR NOT ([t].[CustomerID] LIKE N'A%'))) THEN CAST(1 AS bit)
+        WHERE ([t].[CustomerID] IS NULL AND (CAST(0 AS bit) = CAST(1 AS bit))) OR NOT ([t].[CustomerID] LIKE N'A%')) THEN CAST(1 AS bit)
     ELSE CAST(0 AS bit)
 END");
         }

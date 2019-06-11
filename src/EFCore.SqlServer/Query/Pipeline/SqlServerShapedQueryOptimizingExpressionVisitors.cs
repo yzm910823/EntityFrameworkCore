@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Query.Pipeline;
 using Microsoft.EntityFrameworkCore.Relational.Query.Pipeline;
 
@@ -20,6 +21,9 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Pipeline
         {
             query = base.Visit(query);
             query = new SearchConditionConvertingExpressionVisitor(SqlExpressionFactory).Visit(query);
+
+            var useRelationalNulls = RelationalOptionsExtension.Extract(QueryCompilationContext.ContextOptions).UseRelationalNulls;
+            query = new SqlExpressionOptimizingVisitor(SqlExpressionFactory, useRelationalNulls).Visit(query);
 
             return query;
         }
