@@ -90,8 +90,8 @@ FROM [Order Details] AS [od]");
             await base.Sum_with_division_on_decimal_no_significant_digits(isAsync);
 
             AssertSql(
-                @"SELECT SUM([od].[Quantity] / 2.0)
-FROM [Order Details] AS [od]");
+                @"SELECT SUM(CAST([o].[Quantity] AS decimal(18,2)) / 2.0)
+FROM [Order Details] AS [o]");
         }
 
         public override async Task Sum_with_coalesce(bool isAsync)
@@ -138,9 +138,9 @@ FROM [Customers] AS [c]");
             await base.Sum_on_float_column(isAsync);
 
             AssertSql(
-                @"SELECT CAST(SUM([od].[Discount]) AS real)
-FROM [Order Details] AS [od]
-WHERE [od].[ProductID] = 1");
+                @"SELECT CAST(SUM([o].[Discount]) AS real)
+FROM [Order Details] AS [o]
+WHERE [o].[ProductID] = 1");
         }
 
         public override async Task Sum_on_float_column_in_subquery(bool isAsync)
@@ -149,10 +149,9 @@ WHERE [od].[ProductID] = 1");
 
             AssertSql(
                 @"SELECT [o].[OrderID], (
-    SELECT CAST(SUM([od].[Discount]) AS real)
-    FROM [Order Details] AS [od]
-    WHERE [o].[OrderID] = [od].[OrderID]
-) AS [Sum]
+    SELECT CAST(SUM([o0].[Discount]) AS real)
+    FROM [Order Details] AS [o0]
+    WHERE [o].[OrderID] = [o0].[OrderID])
 FROM [Orders] AS [o]
 WHERE [o].[OrderID] < 10300");
         }
@@ -171,7 +170,7 @@ FROM [Orders] AS [o]");
             await base.Average_with_binary_expression(isAsync);
 
             AssertSql(
-                @"SELECT AVG(CAST([o].[OrderID] * 2 AS float))
+                @"SELECT AVG(CAST(([o].[OrderID] * 2) AS float))
 FROM [Orders] AS [o]");
         }
 
@@ -189,7 +188,7 @@ FROM [Orders] AS [o]");
             await base.Average_with_arg_expression(isAsync);
 
             AssertSql(
-                @"SELECT AVG(CAST([o].[OrderID] + [o].[OrderID] AS float))
+                @"SELECT AVG(CAST(([o].[OrderID] + [o].[OrderID]) AS float))
 FROM [Orders] AS [o]");
         }
 
@@ -198,8 +197,8 @@ FROM [Orders] AS [o]");
             await base.Average_with_division_on_decimal(isAsync);
 
             AssertSql(
-                @"SELECT AVG([od].[Quantity] / 2.09)
-FROM [Order Details] AS [od]");
+                @"SELECT AVG(CAST([o].[Quantity] AS decimal(18,2)) / 2.09)
+FROM [Order Details] AS [o]");
         }
 
         public override async Task Average_with_division_on_decimal_no_significant_digits(bool isAsync)
@@ -207,8 +206,8 @@ FROM [Order Details] AS [od]");
             await base.Average_with_division_on_decimal_no_significant_digits(isAsync);
 
             AssertSql(
-                @"SELECT AVG([od].[Quantity] / 2.0)
-FROM [Order Details] AS [od]");
+                @"SELECT AVG(CAST([o].[Quantity] AS decimal(18,2)) / 2.0)
+FROM [Order Details] AS [o]");
         }
 
         public override async Task Average_with_coalesce(bool isAsync)
@@ -261,9 +260,9 @@ ORDER BY [c].[CustomerID]");
             await base.Average_on_float_column(isAsync);
 
             AssertSql(
-                @"SELECT CAST(AVG([od].[Discount]) AS real)
-FROM [Order Details] AS [od]
-WHERE [od].[ProductID] = 1");
+                @"SELECT CAST(AVG([o].[Discount]) AS real)
+FROM [Order Details] AS [o]
+WHERE [o].[ProductID] = 1");
         }
 
         public override async Task Average_on_float_column_in_subquery(bool isAsync)
@@ -292,10 +291,9 @@ WHERE @_outer_OrderID = [od0].[OrderID]");
 
             AssertSql(
                 @"SELECT [o].[OrderID], (
-    SELECT CAST(AVG([od].[Discount]) AS real)
-    FROM [Order Details] AS [od]
-    WHERE [o].[OrderID] = [od].[OrderID]
-) AS [Sum]
+    SELECT CAST(AVG([o0].[Discount]) AS real)
+    FROM [Order Details] AS [o0]
+    WHERE [o].[OrderID] = [o0].[OrderID])
 FROM [Orders] AS [o]
 WHERE [o].[OrderID] < 10300");
         }
@@ -437,7 +435,7 @@ ORDER BY [c].[CustomerID]");
             AssertSql(
                 @"SELECT COUNT(*)
 FROM [Orders] AS [o]
-WHERE [o].[CustomerID] = N'ALFKI'");
+WHERE ([o].[CustomerID] = N'ALFKI') AND [o].[CustomerID] IS NOT NULL");
         }
 
         public override async Task Where_OrderBy_Count(bool isAsync)
@@ -640,7 +638,7 @@ ORDER BY [t].[CustomerID]");
             AssertSql(
                 @"SELECT COUNT(*)
 FROM (
-    SELECT DISTINCT [c].*
+    SELECT DISTINCT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
     FROM [Customers] AS [c]
 ) AS [t]");
         }
@@ -671,14 +669,15 @@ WHERE [c].[CustomerID] = N'ALFKI'");
         {
             await base.FirstOrDefault_inside_subquery_gets_server_evaluated(isAsync);
 
-            AssertSql(
-                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-FROM [Customers] AS [c]
-WHERE ([c].[CustomerID] = N'ALFKI') AND ((
-    SELECT TOP(1) [o].[CustomerID]
-    FROM [Orders] AS [o]
-    WHERE ([c].[CustomerID] = [o].[CustomerID]) AND ([o].[CustomerID] = N'ALFKI')
-) = N'ALFKI')");
+            // issue #15994
+//            AssertSql(
+//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+//FROM [Customers] AS [c]
+//WHERE ([c].[CustomerID] = N'ALFKI') AND ((
+//    SELECT TOP(1) [o].[CustomerID]
+//    FROM [Orders] AS [o]
+//    WHERE ([c].[CustomerID] = [o].[CustomerID]) AND ([o].[CustomerID] = N'ALFKI')
+//) = N'ALFKI')");
         }
 
         public override async Task Multiple_collection_navigation_with_FirstOrDefault_chained(bool isAsync)
@@ -719,6 +718,7 @@ ORDER BY [od].[ProductID]");
         {
             await base.Multiple_collection_navigation_with_FirstOrDefault_chained_projecting_scalar(isAsync);
 
+            // issue #15994
             AssertSql(
                 @"SELECT (
     SELECT TOP(1) [od].[ProductID]
@@ -778,7 +778,7 @@ WHERE [c].[CustomerID] = N'ALFKI'");
             AssertSql(
                 @"SELECT TOP(1) [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
-WHERE [c].[City] = N'London'
+WHERE ([c].[City] = N'London') AND [c].[City] IS NOT NULL
 ORDER BY [c].[ContactName] DESC");
         }
 
@@ -789,7 +789,7 @@ ORDER BY [c].[ContactName] DESC");
             AssertSql(
                 @"SELECT TOP(1) [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
-WHERE [c].[City] = N'London'
+WHERE ([c].[City] = N'London') AND [c].[City] IS NOT NULL
 ORDER BY [c].[ContactName] DESC");
         }
 
@@ -982,10 +982,11 @@ WHERE [c].[CustomerID] IN (N'ABCDE', N'ALFKI')");
         {
             await base.Contains_with_local_collection_false(isAsync);
 
-            AssertSql(
-                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-FROM [Customers] AS [c]
-WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI')");
+            // issue #15994
+//            AssertSql(
+//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+//FROM [Customers] AS [c]
+//WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI')");
         }
 
         public override async Task Contains_with_local_collection_complex_predicate_and(bool isAsync)
@@ -995,17 +996,18 @@ WHERE [c].[CustomerID] NOT IN (N'ABCDE', N'ALFKI')");
             AssertSql(
                 @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
-WHERE [c].[CustomerID] IN (N'ALFKI', N'ABCDE') AND [c].[CustomerID] IN (N'ABCDE', N'ALFKI')");
+WHERE (([c].[CustomerID] = N'ALFKI') OR ([c].[CustomerID] = N'ABCDE')) AND [c].[CustomerID] IN (N'ABCDE', N'ALFKI')");
         }
 
         public override async Task Contains_with_local_collection_complex_predicate_or(bool isAsync)
         {
             await base.Contains_with_local_collection_complex_predicate_or(isAsync);
 
-            AssertSql(
-                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-FROM [Customers] AS [c]
-WHERE [c].[CustomerID] IN (N'ABCDE', N'ALFKI', N'ALFKI', N'ABCDE')");
+            // issue #15994
+//            AssertSql(
+//                @"SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+//FROM [Customers] AS [c]
+//WHERE [c].[CustomerID] IN (N'ABCDE', N'ALFKI', N'ALFKI', N'ABCDE')");
         }
 
         public override async Task Contains_with_local_collection_complex_predicate_not_matching_ins1(bool isAsync)
@@ -1061,6 +1063,7 @@ FROM [Customers] AS [c]");
         {
             await base.Contains_top_level(isAsync);
 
+            // issue #15994
             AssertSql(
                 @"@__p_0='ALFKI' (Size = 4000)
 
@@ -1126,7 +1129,7 @@ ORDER BY [o].[OrderID]");
             AssertSql(
                 @"SELECT AVG(CAST(CAST([o].[OrderID] AS bigint) AS float))
 FROM [Orders] AS [o]
-WHERE [o].[CustomerID] LIKE N'A%'");
+WHERE [o].[CustomerID] IS NOT NULL AND ([o].[CustomerID] LIKE N'A%')");
         }
 
         public override async Task Max_with_non_matching_types_in_projection_introduces_explicit_cast(bool isAsync)
@@ -1335,8 +1338,7 @@ FROM [Customers] AS [c]");
                 @"SELECT (
     SELECT AVG(CAST([o].[OrderID] AS float))
     FROM [Orders] AS [o]
-    WHERE [c].[CustomerID] = [o].[CustomerID]
-)
+    WHERE ([c].[CustomerID] = [o].[CustomerID]) AND [o].[CustomerID] IS NOT NULL)
 FROM [Customers] AS [c]");
         }
     }

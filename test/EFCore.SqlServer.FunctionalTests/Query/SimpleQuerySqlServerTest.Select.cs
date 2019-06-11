@@ -403,19 +403,19 @@ WHERE [c].[CustomerID] LIKE N'A%'");
             base.Select_nested_collection_multi_level5();
 
             AssertSql(
-                @"SELECT COALESCE((
+                @"SELECT (
     SELECT TOP(1) (
-        SELECT TOP(1) [od].[ProductID]
-        FROM [Order Details] AS [od]
-        WHERE ([o].[OrderID] = [od].[OrderID]) AND ([od].[OrderID] <> (
+        SELECT TOP(1) [o].[ProductID]
+        FROM [Order Details] AS [o]
+        WHERE ([o0].[OrderID] = [o].[OrderID]) AND (([o].[OrderID] <> (
             SELECT COUNT(*)
-            FROM [Orders] AS [o0]
-            WHERE [c].[CustomerID] = [o0].[CustomerID]
-        ))
-    )
-    FROM [Orders] AS [o]
-    WHERE ([c].[CustomerID] = [o].[CustomerID]) AND ([o].[OrderID] < 10500)
-), 0) AS [Order]
+            FROM [Orders] AS [o1]
+            WHERE ([c].[CustomerID] = [o1].[CustomerID]) AND [o1].[CustomerID] IS NOT NULL)) OR (
+            SELECT COUNT(*)
+            FROM [Orders] AS [o1]
+            WHERE ([c].[CustomerID] = [o1].[CustomerID]) AND [o1].[CustomerID] IS NOT NULL) IS NULL))
+    FROM [Orders] AS [o0]
+    WHERE (([c].[CustomerID] = [o0].[CustomerID]) AND [o0].[CustomerID] IS NOT NULL) AND ([o0].[OrderID] < 10500))
 FROM [Customers] AS [c]
 WHERE [c].[CustomerID] LIKE N'A%'");
         }
@@ -578,10 +578,10 @@ ORDER BY [o].[OrderID]");
             await base.Select_non_matching_value_types_from_anonymous_type_introduces_explicit_cast(isAsync);
 
             AssertSql(
-                @"SELECT CAST([o].[OrderID] AS bigint) AS [LongOrder], CAST([o].[OrderID] AS smallint) AS [ShortOrder], [o].[OrderID] AS [Order]
+                @"SELECT CAST([o].[OrderID] AS bigint), CAST([o].[OrderID] AS smallint), [o].[OrderID]
 FROM [Orders] AS [o]
-WHERE [o].[CustomerID] = N'ALFKI'
-ORDER BY [Order]");
+WHERE ([o].[CustomerID] = N'ALFKI') AND [o].[CustomerID] IS NOT NULL
+ORDER BY [o].[OrderID]");
         }
 
         public override async Task Select_conditional_with_null_comparison_in_test(bool isAsync)
@@ -723,15 +723,14 @@ FROM [Customers] AS [c]");
 
             AssertSql(
                 @"SELECT (
-    SELECT TOP(1) [t].[CustomerID]
+    SELECT TOP(1) [t].[c]
     FROM (
-        SELECT TOP(2) [o].[CustomerID], [o].[OrderID], [o].[OrderDate]
+        SELECT TOP(2) [o].[CustomerID] AS c, [o].[OrderID] AS c0, [o].[OrderDate] AS c1
         FROM [Orders] AS [o]
-        WHERE [c].[CustomerID] = [o].[CustomerID]
+        WHERE ([c].[CustomerID] = [o].[CustomerID]) AND [o].[CustomerID] IS NOT NULL
         ORDER BY [o].[OrderID], [o].[OrderDate] DESC
     ) AS [t]
-    ORDER BY [t].[OrderID], [t].[OrderDate] DESC
-)
+    ORDER BY [t].[c0], [t].[c1] DESC)
 FROM [Customers] AS [c]");
         }
 
@@ -898,8 +897,8 @@ FROM [Orders] AS [o]");
 
             AssertSql(
                 @"SELECT CASE
-    WHEN [c].[CustomerID] = N'ALFKI'
-    THEN CAST(1 AS tinyint) ELSE CAST(2 AS tinyint)
+    WHEN [c].[CustomerID] = N'ALFKI' THEN CAST(1 AS tinyint)
+    ELSE CAST(2 AS tinyint)
 END
 FROM [Customers] AS [c]");
         }
@@ -933,7 +932,7 @@ FROM [Customers] AS [c]");
             await base.Anonymous_projection_AsNoTracking_Selector(isAsync);
 
             AssertSql(
-                @"SELECT [o].[CustomerID] AS [A], [o].[OrderDate] AS [B]
+                @"SELECT [o].[OrderDate]
 FROM [Orders] AS [o]");
         }
 
@@ -942,9 +941,9 @@ FROM [Orders] AS [o]");
             await base.Anonymous_projection_with_repeated_property_being_ordered(isAsync);
 
             AssertSql(
-                @"SELECT [c].[CustomerID] AS [B]
+                @"SELECT [c].[CustomerID], [c].[CustomerID]
 FROM [Customers] AS [c]
-ORDER BY [B]");
+ORDER BY [c].[CustomerID]");
         }
 
         public override async Task Anonymous_projection_with_repeated_property_being_ordered_2(bool isAsync)
