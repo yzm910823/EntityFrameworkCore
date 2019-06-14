@@ -3223,7 +3223,7 @@ WHERE [c2].[CustomerID] = @_outer_CustomerID1");
             AssertSql(
                 @"SELECT [o].[CustomerID]
 FROM [Orders] AS [o]
-WHERE [o].[OrderDate] IS NOT NULL AND ((N'10' = N'') OR (CHARINDEX(N'10', CONVERT(VARCHAR(10), [o].[EmployeeID])) > 0))");
+WHERE [o].[OrderDate] IS NOT NULL AND (CHARINDEX(N'10', CONVERT(VARCHAR(10), [o].[EmployeeID])) > 0)");
         }
 
         public override async Task Select_expression_long_to_string(bool isAsync)

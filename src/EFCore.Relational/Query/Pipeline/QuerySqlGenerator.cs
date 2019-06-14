@@ -104,8 +104,8 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
                 GenerateList(selectExpression.Tables, e => Visit(e), sql => sql.AppendLine());
             }
 
-            if (selectExpression.Predicate != null
-                && !IsTautology(selectExpression.Predicate))
+            if (selectExpression.Predicate != null)
+                //&& !IsTautology(selectExpression.Predicate))
             {
                 _relationalCommandBuilder.AppendLine().Append("WHERE ");
 
@@ -148,27 +148,27 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
             return selectExpression;
         }
 
-        private bool IsTautology(SqlExpression sqlExpression)
-        {
-            if (sqlExpression is SqlConstantExpression sqlConstantExpression
-                && sqlConstantExpression.Type == typeof(bool)
-                && (bool)sqlConstantExpression.Value)
-            {
-                return true;
-            }
+        //private bool IsTautology(SqlExpression sqlExpression)
+        //{
+        //    if (sqlExpression is SqlConstantExpression sqlConstantExpression
+        //        && sqlConstantExpression.Type == typeof(bool)
+        //        && (bool)sqlConstantExpression.Value)
+        //    {
+        //        return true;
+        //    }
 
-            if (sqlExpression is SqlBinaryExpression sqlBinaryExpression
-                && sqlBinaryExpression.Left is SqlConstantExpression leftConstant
-                && sqlBinaryExpression.Right is SqlConstantExpression rightConstant
-                && leftConstant.Type == typeof(bool)
-                && rightConstant.Type == typeof(bool)
-                && (bool)leftConstant.Value == (bool)rightConstant.Value)
-            {
-                return true;
-            }
+        //    if (sqlExpression is SqlBinaryExpression sqlBinaryExpression
+        //        && sqlBinaryExpression.Left is SqlConstantExpression leftConstant
+        //        && sqlBinaryExpression.Right is SqlConstantExpression rightConstant
+        //        && leftConstant.Type == typeof(bool)
+        //        && rightConstant.Type == typeof(bool)
+        //        && (bool)leftConstant.Value == (bool)rightConstant.Value)
+        //    {
+        //        return true;
+        //    }
 
-            return false;
-        }
+        //    return false;
+        //}
 
         protected override Expression VisitProjection(ProjectionExpression projectionExpression)
         {
