@@ -13,7 +13,6 @@ namespace Microsoft.EntityFrameworkCore.Query
 {
     public abstract partial class SimpleQueryTestBase<TFixture>
     {
-
         [ConditionalTheory]
         [MemberData(nameof(IsAsyncData))]
         public virtual Task Union(bool isAsync)
@@ -162,5 +161,45 @@ namespace Microsoft.EntityFrameworkCore.Query
                 .Take(10)
                 .Where(x => x.Foo == "Berlin"),
                 entryCount: 1);
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task Union_Include(bool isAsync)
+            => AssertQuery<Customer>(isAsync, cs => cs
+                .Where(c => c.City == "Berlin")
+                .Union(cs.Where(c => c.City == "London"))
+                .Include(c => c.Orders),
+                entryCount: 59);
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task Include_Union(bool isAsync)
+            => AssertQuery<Customer>(isAsync, cs => cs
+                .Where(c => c.City == "Berlin")
+                .Include(c => c.Orders)
+                .Union(cs
+                    .Where(c => c.City == "London")
+                    .Include(c => c.Orders)),
+                entryCount: 59);
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task SubSelect_Union(bool isAsync)
+            => AssertQuery<Customer>(isAsync, cs => cs
+                    .Select(c => new { Customer = c, Orders = c.Orders.Count })
+                    .Union(cs
+                            .Select(c => new { Customer = c, Orders = c.Orders.Count })
+                    ),
+                entryCount: 91);
+
+        [ConditionalTheory(Skip = "#16243")]
+        [MemberData(nameof(IsAsyncData))]
+public virtual Task Client_eval_Union_FirstOrDefault(bool isAsync)
+    => AssertFirstOrDefault<Customer>(
+        isAsync, cs => cs
+            .Select(c => ClientSideMethod(c))
+            .Union(cs));
+
+        static Customer ClientSideMethod(Customer c) => c;
     }
 }
