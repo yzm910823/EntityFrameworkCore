@@ -9,7 +9,20 @@ namespace Microsoft.EntityFrameworkCore.Query.NavigationExpansion.Visitors
 {
     public class PendingSelectorIncludeRewriter : ExpressionVisitor
     {
-        protected override Expression VisitMember(MemberExpression memberExpression) => memberExpression;
+        protected override Expression VisitMember(MemberExpression memberExpression)
+        {
+            if (memberExpression.Expression is NavigationBindingExpression)
+            {
+                return memberExpression;
+            }
+
+            var newExpression = Visit(memberExpression.Expression);
+
+            return newExpression != memberExpression.Expression
+                ? Expression.MakeMemberAccess(newExpression, memberExpression.Member)
+                : memberExpression;
+        }
+
         protected override Expression VisitInvocation(InvocationExpression invocationExpression) => invocationExpression;
         protected override Expression VisitLambda<T>(Expression<T> lambdaExpression) => lambdaExpression;
         protected override Expression VisitTypeBinary(TypeBinaryExpression typeBinaryExpression) => typeBinaryExpression;

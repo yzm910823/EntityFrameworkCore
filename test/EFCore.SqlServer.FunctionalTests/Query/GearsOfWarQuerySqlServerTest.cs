@@ -8208,6 +8208,17 @@ INNER JOIN (
 ORDER BY [t].[FullName]");
         }
 
+        public override void Include_with_client_method_and_member_access_still_applies_includes()
+        {
+            base.Include_with_client_method_and_member_access_still_applies_includes();
+
+            AssertSql(
+                @"SELECT [g].[Nickname], [g].[SquadId], [g].[AssignedCityName], [g].[CityOrBirthName], [g].[Discriminator], [g].[FullName], [g].[HasSoulPatch], [g].[LeaderNickname], [g].[LeaderSquadId], [g].[Rank], [t].[Id], [t].[GearNickName], [t].[GearSquadId], [t].[Note]
+FROM [Gears] AS [g]
+LEFT JOIN [Tags] AS [t] ON (([g].[Nickname] = [t].[GearNickName]) AND [t].[GearNickName] IS NOT NULL) AND (([g].[SquadId] = [t].[GearSquadId]) AND [t].[GearSquadId] IS NOT NULL)
+WHERE [g].[Discriminator] IN (N'Gear', N'Officer')");
+        }
+
         public override async Task Multiple_includes_with_client_method_around_qsre_and_also_projecting_included_collection()
         {
             await base.Multiple_includes_with_client_method_around_qsre_and_also_projecting_included_collection();
